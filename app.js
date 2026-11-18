@@ -24,7 +24,6 @@
     ui: {
       route: { name: 'home' },
       query: '',
-      galleryFilter: 'all',
       sortMode: false,
       modal: null,
       editor: null,
@@ -147,12 +146,6 @@
   function totalMinutes() {
     return state.data.artifacts.reduce((sum, a) => sum + (Number(a.duration) || 0), 0);
   }
-  function statusLabel(s) {
-    return s === 'ready' ? '可讲解' : '待校对';
-  }
-  function statusBadge(s) {
-    return '<span class="status ' + (s === 'ready' ? 'ready' : 'draft') + '">' + statusLabel(s) + '</span>';
-  }
   function colorLabel(cc) {
     return cc === 'green' ? '要讲' : cc === 'yellow' ? '不熟' : cc === 'red' ? '以后讲' : '未标记';
   }
@@ -188,6 +181,8 @@
     return '';
   }
   function storyText(a) {
+    const override = window.STORY_OVERRIDES && window.STORY_OVERRIDES[a.name];
+    if (override && String(override).trim()) return String(override).trim();
     const s = String(a.story || '').trim();
     if (s) return s;
     const sc = a.script || {};
@@ -284,7 +279,7 @@
     d.artifacts.forEach((a) => {
       a.createdAt = a.createdAt || now;
       a.updatedAt = a.updatedAt || now;
-      a.status = a.status || 'draft';
+      delete a.status;
       a.notes = a.notes || '';
       a.tags = a.tags || [];
       a.facts = a.facts || [];
@@ -308,6 +303,8 @@
     if (!galleries.length) throw new Error('至少需要一个单元。');
     const ids = new Set(galleries.map((g) => g.id));
     const storyOf = (a) => {
+      const override = window.STORY_OVERRIDES && window.STORY_OVERRIDES[a.name];
+      if (override && String(override).trim()) return String(override).trim();
       if (a.story && String(a.story).trim()) return String(a.story).trim();
       const sc = a.script || {};
       return [sc.opening, sc.body, sc.highlight, sc.closing].filter((x) => x && String(x).trim()).join('\n\n');
@@ -341,13 +338,13 @@
         },
         tags: Array.isArray(a.tags) ? a.tags.map(String) : [],
         duration: Number(a.duration) || 3,
-        status: a.status === 'ready' ? 'ready' : 'draft',
         colorCode: ['green', 'yellow', 'red'].includes(a.colorCode) ? a.colorCode : '',
         notes: String(a.notes || ''),
         sources: Array.isArray(a.sources) ? a.sources.filter((s) => s && s.title).map((s) => ({ title: String(s.title), url: String(s.url || '') })) : [],
         createdAt: a.createdAt || nowISO(),
         updatedAt: a.updatedAt || nowISO()
       }));
+    artifacts.forEach((a) => { delete a.status; });
     const settings = Object.assign(defaultSettings(), input.settings || {});
     if (!settings.apiBase || settings.apiBase === '/api/ai') settings.apiBase = 'https://api.deepseek.com/chat/completions';
     if (settings.model === 'deepseek-chat') settings.model = 'deepseek-flash';
@@ -484,7 +481,6 @@
     state.ui.editor = null;
     state.ui.ai = null;
     state.ui.manager = null;
-    if (!sameGallery) state.ui.galleryFilter = 'all';
     if (!sameGallery) state.ui.sortMode = false;
     closeReader(true);
     renderModal();
@@ -510,7 +506,7 @@
     const theme = currentTheme();
     const lastId = (() => { try { return localStorage.getItem(LAST_KEY); } catch (e) { return null; } })();
     const last = findArtifact(lastId);
-    const next = last || artifacts.find((a) => a.status === 'draft') || artifacts[0];
+    const next = last || artifacts[0];
     const q = state.ui.query || '';
 
     return '<main class="page home">' +
@@ -588,9 +584,7 @@
     const g = findGallery(id);
     if (!g) return notFound('找不到这个单元');
     const all = galleryArtifacts(g.id);
-    const filter = state.ui.galleryFilter || 'all';
-    const list = all.filter((a) => filter === 'all' ? true : filter === 'ready' ? a.status === 'ready' : a.status !== 'ready');
-    const countReady = all.filter((a) => a.status === 'ready').length;
+    const list = all;
     const sortMode = !!state.ui.sortMode;
     const selected = selectedId ? findArtifact(selectedId) : null;
     const active = selected && selected.galleryId === g.id ? selected : null;
@@ -604,11 +598,9 @@
       '</section>';
     const listBlock =
       '<div class="gallery-toolbar">' +
-        '<h2>文物 <span class="muted small" style="font-family:var(--sans);font-weight:400">' + all.length + ' 件 · ' + countReady + ' 件已校对</span></h2>' +
+        '<h2>文物 <span class="muted small" style="font-family:var(--sans);font-weight:400">' + all.length + ' 件</span></h2>' +
         '<div class="filter-row">' +
-          '<button class="chip chip-btn ' + (filter === 'all' ? 'active' : '') + '" data-action="gallery-filter" data-filter="all">全部</button>' +
-          '<button class="chip chip-btn ' + (filter === 'draft' ? 'active' : '') + '" data-action="gallery-filter" data-filter="draft">待校对</button>' +
-          '<button class="chip chip-btn ' + (filter === 'ready' ? 'active' : '') + '" data-action="gallery-filter" data-filter="ready">可讲解</button>' +
+          '<button class="btn btn-primary btn-sm" type="button" data-action="add-artifact" data-gallery="' + esc(g.id) + '">' + icon('plus') + '添加文物</button>' +
           '<button class="chip chip-btn sort-toggle ' + (sortMode ? 'active' : '') + '" data-action="toggle-sort">' + (sortMode ? '完成排序' : '排序') + '</button>' +
         '</div>' +
       '</div>' +
@@ -619,7 +611,7 @@
         '<span class="legend-hint">' + (sortMode ? '点 ↑↓ 调整顺序，完成后点“完成排序”' : '拖动卡片排序 · 点圆点改颜色') + '</span>' +
       '</div>' +
       (list.length ? '<div class="artifact-list">' + list.map((a) => artifactRow(a, active && active.id === a.id, sortMode)).join('') + '</div>' :
-        '<div class="empty-state"><div class="glyph">器</div><h3>' + (all.length ? '这个筛选下没有条目' : '这个单元还没有文物') + '</h3><p>' + (all.length ? '换一个筛选，或者继续添加。' : '想到哪件，就先把名字记下来；内容可以稍后让 AI 起草。') + '</p><button class="btn btn-primary btn-sm" data-action="add-artifact" data-gallery="' + esc(g.id) + '">' + icon('plus') + '添加文物</button></div>') +
+        '<div class="empty-state"><div class="glyph">器</div><h3>这个单元还没有文物</h3><p>想到哪件，就先把名字记下来；内容可以稍后让 AI 起草。</p><button class="btn btn-primary btn-sm" data-action="add-artifact" data-gallery="' + esc(g.id) + '">' + icon('plus') + '添加文物</button></div>') +
       '<button class="add-row" data-action="add-artifact" data-gallery="' + esc(g.id) + '">' + icon('plus') + '在这个单元里添加文物</button>';
 
     if (!isSplitView()) {
@@ -641,7 +633,7 @@
         '<span class="meta">' + esc(a.era) + ' · ' + esc(a.category || '文物') + '</span>' +
         '<h3>' + esc(a.name) + '</h3>' +
         '<span class="summary">' + esc(a.summary) + '</span>' +
-        '<span class="chip-row">' + (a.tags || []).slice(0, 3).map((t) => '<span class="chip">' + esc(t) + '</span>').join('') + statusBadge(a.status) + '</span>' +
+        '<span class="chip-row">' + (a.tags || []).slice(0, 3).map((t) => '<span class="chip">' + esc(t) + '</span>').join('') + '</span>' +
       '</div>' +
       '<div class="artifact-row-side">' +
         '<button type="button" class="color-dot ' + (cc ? 'on ' + cc : '') + '" data-action="cycle-color" data-id="' + esc(a.id) + '" title="点击切换：绿=要讲，黄=不熟，红=以后讲" aria-label="颜色标记：' + colorLabel(cc) + '"></button>' +
@@ -717,7 +709,6 @@
                 '</span>' +
               '</figcaption>' +
             '</figure>' +
-            (a.status === 'ready' ? '<p class="tiny" style="margin-top:9px;color:var(--jade)">' + icon('check') + ' 已校对，可以上台</p>' : '<p class="tiny" style="margin-top:9px;color:var(--muted)">示例草稿 · 请按展签校对后再使用</p>') +
           '</aside>' +
           '<div class="detail-main">' +
             '<header class="artifact-title">' +
@@ -725,7 +716,7 @@
               '<h1>' + esc(a.name) + '</h1>' +
               (a.alias ? '<p class="alias">又名：' + esc(a.alias) + '</p>' : '') +
               '<p class="meta-line">' + esc(metaLine(a) || a.era) + '</p>' +
-              '<div class="chip-row">' + statusBadge(a.status) + '<span class="chip">' + icon('clock') + (a.duration || 3) + ' 分钟</span></div>' +
+              '<div class="chip-row"><span class="chip">' + icon('clock') + (a.duration || 3) + ' 分钟</span></div>' +
             '</header>' +
             '<div class="detail-actions-bar">' +
               '<button class="btn btn-primary" data-action="open-reader" data-id="' + esc(a.id) + '">' + icon('play') + '讲解模式</button>' +
@@ -815,7 +806,7 @@
                 '<p class="review-prompt">对照一下</p>' +
                 '<p class="summary">' + esc(a.summary) + '</p>' +
                 (storyText(a) ? '<p class="small muted">' + esc(storyText(a).slice(0, 180)) + (storyText(a).length > 180 ? '…' : '') + '</p>' : '') +
-                '<div class="review-meta-line"><span>' + icon('clock') + ' ' + (a.duration || 3) + ' 分钟</span><span>' + statusLabel(a.status) + '</span></div>' +
+                '<div class="review-meta-line"><span>' + icon('clock') + ' ' + (a.duration || 3) + ' 分钟</span></div>' +
                 '<div class="review-actions">' +
                   '<button class="btn btn-primary" data-action="review-next">' + icon('shuffle') + '换一件</button>' +
                   '<a class="btn btn-ghost" href="#/a/' + encodeURIComponent(a.id) + '">看完整讲解</a>' +
@@ -898,7 +889,7 @@
           '<div class="about-block"><strong>它是什么：</strong>一个单机优先的讲解员工作台。目录按“单元 → 文物 → 简介 / 讲解故事”组织，内容可随时增删改；AI 只负责按统一格式起草，最终解释权在你。</div>' +
           '<div class="about-block"><strong>示例内容：</strong>13 件文物为讲解练习草稿，依据国博官网公开资料整理，但年代、尺寸、出土地和叙事解释仍应以展厅说明牌与最新研究为准。</div>' +
           '<div class="about-block"><strong>图片版权：</strong>示例图片来自中国国家博物馆官网，版权归原权利人所有，仅用于个人学习与讲解准备，请勿商用或公开再分发。</div>' +
-          '<div class="about-block"><strong>技术：</strong>原生 HTML / CSS / JavaScript，无框架、无账号、无云端。数据保存在 IndexedDB，支持导出 JSON。版本 0.6.0 · 可行性原型。</div>' +
+          '<div class="about-block"><strong>技术：</strong>原生 HTML / CSS / JavaScript，无框架、无账号、无云端。数据保存在 IndexedDB，支持导出 JSON。版本 0.7.0 · 可行性原型。</div>' +
         '</section>' +
       '</div>' +
     '</main>';
@@ -934,10 +925,6 @@
     else if (state.ui.modal === 'ai') html = aiModal();
     root.innerHTML = html;
     document.body.classList.add('modal-open');
-    setTimeout(() => {
-      const focusable = root.querySelector('[autofocus]') || root.querySelector('input:not([type=hidden]), textarea, select, button');
-      if (focusable && window.innerWidth > 700) focusable.focus({ preventScroll: true });
-    }, 40);
   }
 
   /* ---------------- editor ---------------- */
@@ -947,7 +934,7 @@
       name: '', alias: '', era: '', date: '', material: '', category: '',
       size: '', weight: '', unearthed: '', museum: '中国国家博物馆', image: '', imageCredit: '',
       summary: '', story: '', facts: [], script: { opening: '', body: '', highlight: '', closing: '' },
-      tags: [], duration: 3, status: 'draft', colorCode: '', notes: '', sources: []
+      tags: [], duration: 3, colorCode: '', notes: '', sources: []
     };
   }
   function openEditor(id, galleryId) {
@@ -1018,7 +1005,7 @@
     return '<div class="modal-backdrop" data-action="modal-backdrop"><div class="modal wide picker-modal" role="dialog" aria-modal="true" aria-labelledby="picker-title">' +
       '<div class="modal-head"><div><p class="kicker">添加文物</p><h2 id="picker-title">从名录里选一件</h2><p>共 ' + catalogItems().length + ' 件「古代中国」展品；选中后自动填表。</p></div><button class="icon-btn close" data-action="close-modal" aria-label="关闭">' + icon('close') + '</button></div>' +
       '<div class="picker-search-wrap">' +
-        '<div class="catalog-search">' + icon('search') + '<input id="catalog-search" type="search" value="' + esc(e.query) + '" placeholder="搜名称、又名、年代、出土地……" autocomplete="off" autofocus></div>' +
+        '<div class="catalog-search">' + icon('search') + '<input id="catalog-search" type="search" value="' + esc(e.query) + '" placeholder="搜名称、又名、年代、出土地……" autocomplete="off"></div>' +
         '<div class="scope-row">' + scopes.map((s) => '<button type="button" class="chip chip-btn ' + (e.scope === s.id ? 'active' : '') + '" data-action="catalog-scope" data-scope="' + esc(s.id) + '">' + esc(s.name) + '</button>').join('') + '</div>' +
       '</div>' +
       '<div class="catalog-count" id="catalog-count">' + e.pickerList.length + ' 件</div>' +
@@ -1040,7 +1027,7 @@
       weight: content.weight || item.w || '',
       unearthed: content.unearthed || item.u || '',
       summary: content.summary || '',
-      story: content.story || '',
+      story: (window.STORY_OVERRIDES && window.STORY_OVERRIDES[item.n]) || content.story || '',
       duration: content.duration || 3,
       image: item.img || '',
       imageCredit: item.img ? '中国国家博物馆官网' : ''
@@ -1062,7 +1049,7 @@
           '<div class="form-section">' +
             '<h3>基本信息 <span>BASIC</span></h3>' +
             '<div class="field-row">' +
-              '<div class="field"><label for="f-name">名称 *</label><input id="f-name" name="name" class="input" value="' + esc(a.name) + '" placeholder="例如：青瓷莲花尊" autocomplete="off" autofocus required></div>' +
+              '<div class="field"><label for="f-name">名称 *</label><input id="f-name" name="name" class="input" value="' + esc(a.name) + '" placeholder="例如：青瓷莲花尊" autocomplete="off" required></div>' +
               '<div class="field"><label for="f-alias">又名 / 别名</label><input id="f-alias" name="alias" class="input" value="' + esc(a.alias) + '" placeholder="司母戊鼎、后母戊鼎……"></div>' +
             '</div>' +
             '<div class="field-row">' +
@@ -1097,20 +1084,20 @@
               '</div>' +
             '</details>' +
           '</div>' +
+          (isNew ? '<div class="form-section">' +
+            '<h3>AI 起草 <span>OPTIONAL</span></h3>' +
+            '<div class="field"><label for="f-ai-instruction">给 AI 的补充提示（可选）</label><textarea id="f-ai-instruction" name="aiInstruction" class="textarea" rows="3" placeholder="例如：观众是小学生；重点讲铸造工艺；不要用‘首先、其次’。"></textarea><span class="hint">只用于这次 AI 起草；AI 会自动补齐空着的年代、材质、尺寸、重量等，未知会写“未知”。保存后可在 AI 面板里修改。</span></div>' +
+          '</div>' : '') +
           '<div class="form-section">' +
             '<h3>内容 <span>CONTENT</span></h3>' +
             '<div class="field"><label for="f-summary">一句话简介</label><textarea id="f-summary" name="summary" class="textarea" rows="3" maxlength="220" placeholder="40–70 字：它是什么，为什么值得停下来看。">' + esc(a.summary) + '</textarea></div>' +
-            '<div class="field"><label for="f-story">讲解故事</label><textarea id="f-story" name="story" class="textarea" rows="10" placeholder="像给观众讲故事一样写：先钩住他，再讲信息、细节和收束。">' + esc(a.story || storyText(a)) + '</textarea><div class="counter" data-counter-for="f-story"></div></div>' +
-            '<div class="field-row">' +
-              '<div class="field"><label for="f-duration">讲解时长（分钟）</label><input id="f-duration" name="duration" type="number" min="1" max="30" class="input" value="' + esc(a.duration || 3) + '"></div>' +
-              '<div class="field"><label for="f-status">校对状态</label><select id="f-status" name="status" class="select"><option value="draft" ' + (a.status !== 'ready' ? 'selected' : '') + '>待校对（草稿）</option><option value="ready" ' + (a.status === 'ready' ? 'selected' : '') + '>可讲解（已校对）</option></select></div>' +
-            '</div>' +
-            (isNew ? '<div class="field"><label for="f-ai-instruction">AI 起草提示（可选）</label><textarea id="f-ai-instruction" name="aiInstruction" class="textarea" rows="3" placeholder="例如：观众是小学生；控制在 2 分钟；重点讲铸造工艺；不要用‘首先、其次’。"></textarea><span class="hint">只用于这次 AI 起草，不会保存进文物内容；保存后可在 AI 面板里修改。</span></div>' : '') +
+            '<div class="field"><label for="f-story">讲解故事</label><textarea id="f-story" name="story" class="textarea" rows="10" placeholder="直接写一段可以照着讲的生动叙述；不要写“你可以”“注意看”这类提示。">' + esc(storyText(a)) + '</textarea><div class="counter" data-counter-for="f-story"></div></div>' +
+            (!isNew ? '<div class="field"><label for="f-duration">讲解时长（分钟）</label><input id="f-duration" name="duration" type="number" min="1" max="30" class="input" value="' + esc(a.duration || 3) + '"></div>' : '') +
           '</div>' +
-          '<div class="form-section">' +
+          (!isNew ? '<div class="form-section">' +
             '<h3>笔记 <span>NOTES</span></h3>' +
             '<div class="field"><label for="f-notes">我的笔记</label><textarea id="f-notes" name="notes" class="textarea" rows="4" placeholder="现场观察、观众反应、下次要补的点……">' + esc(a.notes) + '</textarea></div>' +
-          '</div>' +
+          '</div>' : '') +
         '</div>' +
         '<div class="modal-foot">' +
           (isNew ? '<span></span>' : '<button class="btn btn-quiet btn-sm" type="button" data-action="delete-artifact" data-id="' + esc(a.id) + '">' + icon('trash') + '删除</button>') +
@@ -1180,7 +1167,7 @@
     if (m.form) {
       const f = m.form;
       form = '<form id="gallery-form" style="margin-top:14px;padding-top:16px;border-top:1px solid var(--line)">' +
-        '<div class="field"><label for="g-name">单元名称 *</label><input id="g-name" name="name" class="input" value="' + esc(f.name || '') + '" placeholder="例如：专题：丝绸之路" autofocus required></div>' +
+        '<div class="field"><label for="g-name">单元名称 *</label><input id="g-name" name="name" class="input" value="' + esc(f.name || '') + '" placeholder="例如：专题：丝绸之路" required></div>' +
         '<div class="field-row">' +
           '<div class="field"><label for="g-period">年代范围</label><input id="g-period" name="period" class="input" value="' + esc(f.period || '') + '" placeholder="例如：前 2 世纪—14 世纪"></div>' +
           '<div class="field"><label for="g-color">标识色</label><input id="g-color" name="color" type="color" class="input" value="' + colorSafe(f.color) + '" style="padding:5px;height:42px"></div>' +
@@ -1227,14 +1214,16 @@
       body = '<div class="ai-loading"><span class="spinner"></span><span>正在按统一格式起草……通常需要 10–30 秒。</span></div>';
     } else if (ai.result) {
       const r = ai.result;
+      const archive = [['era', '年代'], ['material', '材质'], ['category', '类别'], ['size', '尺寸'], ['weight', '重量'], ['unearthed', '出土/来源']]
+        .map(([key, label]) => label + '：' + esc(r[key] || '未知')).join('<br>');
       body = '<div class="ai-result">' +
         (ai.error ? '<div class="error-box">' + esc(ai.error) + '</div>' : '') +
         '<div class="ai-preview-block"><h4>一句话简介</h4><p>' + esc(r.summary || '') + '</p></div>' +
         '<div class="ai-preview-block"><h4>讲解故事</h4><p>' + nl2br(r.story || '') + '</p></div>' +
-        '<div class="ai-preview-block"><h4>建议时长</h4><p>' + (r.duration || 3) + ' 分钟</p></div>' +
+        '<div class="ai-preview-block"><h4>补齐档案</h4><p>' + archive + '</p></div>' +
       '</div>';
     } else {
-      body = '<div class="ai-intro"><span class="glyph">✦</span><span>AI 只负责起草。它会遵守同一套格式，但史实、措辞和现场感需要你校对。生成后可以先预览，再决定要不要覆盖。</span></div>' +
+      body = '<div class="ai-intro"><span class="glyph">✦</span><span>AI 只负责起草。它会遵守同一套格式，但史实、措辞和现场感需要你把关。生成后可以先预览，再决定要不要覆盖。</span></div>' +
         (!hasKey && !isProxy ? '<div class="error-box" style="margin-bottom:14px">还没有填写 API Key。可以先去设置里填，或使用下面的“离线搭框架 / 粘贴 JSON”。</div>' : '') +
         '<form id="ai-form">' +
           '<div class="field"><label for="ai-mode">生成方式</label><select id="ai-mode" name="mode" class="select">' +
@@ -1268,33 +1257,32 @@
       : mode === 'story' ? '保留现有“一句话简介”，只重写讲解故事。'
       : '完整起草：一句话简介和一段讲解故事。';
     const system = [
-      '你是中国国家博物馆“古代中国”基本陈列的资深讲解员导师，熟悉展厅动线、展签信息和观众心理。',
-      '你的任务不是写论文，而是帮一位讲解员准备可以站着讲出来的草稿。',
+      '你是中国国家博物馆“古代中国”基本陈列的资深讲解员，负责把文物资料写成可以直接照着讲的生动故事。',
       '必须遵守：',
       '1. 只输出一个 JSON 对象，不要 Markdown 代码块，不要任何解释文字。',
-      '2. 不编造无法核实的数据。不确定的内容用“（待核对）”标注，区分史实与学界推测，推测用“一般认为 / 有学者认为”。',
-      '3. 讲解故事用第一人称口语，面向现场观众；句子短，避免“首先、其次、最后”这类套话。',
-      '4. story 是 500–800 字的完整讲解故事：开头 1–2 句钩住观众，中间讲信息、背景和一个可以指给观众看的细节，结尾收束并自然过渡到下一件。可以分段，但不要写“开场 / 主体 / 细节 / 收束”这类小标题。',
-      '5. summary 40–70 字；duration 是 2–5 的整数分钟。',
-      '6. 如果有舞台提示，用全角括号写，例如“（指向器腹）”。',
-      '7. 故事要能直接读出来；不要用“本文将”“我们可以看到”这种书面腔。',
-      '输出 JSON 字段：summary, story, duration。'
+      '2. story 是直接讲给观众听的一段叙述，不是讲解技巧或教学提示。不要出现“先别急着看”“你可以”“注意看”“带大家”“我们来看”“接下来”“我讲的时候”这类提示、动作或教学口吻；不要用括号写舞台提示（例如“（指向器腹）”）。直接讲文物本身、历史现场和小故事。',
+      '3. story 保持 500–800 字，分 3–5 段，句子短、口语化；不要小标题，不要“开场 / 主体 / 细节 / 收束”这类结构词。',
+      '4. summary 40–70 字，直接说它是什么、为什么值得停下来看。',
+      '5. 补齐 era、material、category、size、weight、unearthed；已有资料优先，不覆盖；没有把握就写“未知”，不要编造精确数字。',
+      '6. 史实不确定时用“一般认为 / 有学者认为”，不要把推测写成定论。',
+      '输出 JSON 字段：summary, story, era, material, category, size, weight, unearthed。'
     ].join('\n');
     const existing = [
       '名称：' + a.name,
       '又名：' + (a.alias || '无'),
       '单元：' + galleryName(a.galleryId),
-      '年代：' + (a.era || a.date || '待核对'),
-      '材质：' + (a.material || '待核对'),
-      '尺寸：' + (a.size || '待核对'),
-      '重量：' + (a.weight || '待核对'),
-      '出土/来源：' + (a.unearthed || '待核对'),
+      '年代：' + (a.era || a.date || '未填'),
+      '材质：' + (a.material || '未填'),
+      '类别：' + (a.category || '未填'),
+      '尺寸：' + (a.size || '未填'),
+      '重量：' + (a.weight || '未填'),
+      '出土/来源：' + (a.unearthed || '未填'),
       '馆藏/场馆：' + (a.museum || '中国国家博物馆'),
       '现有简介：' + (a.summary || '无'),
       '现有讲解故事：' + (storyText(a) || '无'),
       '讲解员补充：' + (instruction || '无')
     ].join('\n');
-    const user = '【任务】\n' + modeText + '\n\n【文物资料】\n' + existing + '\n\n【输出】\n严格返回 JSON，不要代码块。只返回 summary, story, duration 三个字段。';
+    const user = '【任务】\n' + modeText + '\n\n【文物资料】\n' + existing + '\n\n【输出】\n严格返回 JSON，不要代码块。只返回 summary, story, era, material, category, size, weight, unearthed。';
     return { system, user };
   }
   function parseAIJSON(raw) {
@@ -1318,7 +1306,12 @@
     const result = {
       summary: asString(obj.summary),
       story,
-      duration: clamp(Number(obj.duration) || 3, 1, 30)
+      era: asString(obj.era),
+      material: asString(obj.material),
+      category: asString(obj.category),
+      size: asString(obj.size),
+      weight: asString(obj.weight),
+      unearthed: asString(obj.unearthed)
     };
     if (!result.summary && !result.story) throw new Error('返回内容里没有 summary 或 story，无法应用。');
     return result;
@@ -1382,7 +1375,7 @@
       const content = await chatCompletion([
         { role: 'system', content: p.system },
         { role: 'user', content: p.user }
-      ], 2200);
+      ], 3000);
       ai.result = parseAIJSON(content);
       ai.raw = content;
       ai.loading = false;
@@ -1402,8 +1395,15 @@
     const r = ai.result;
     if (ai.mode !== 'story' && r.summary) a.summary = r.summary;
     if (ai.mode !== 'summary' && r.story) a.story = r.story;
-    if (r.duration) a.duration = clamp(Number(r.duration) || a.duration, 1, 30);
-    a.status = 'draft';
+    const archiveFields = ['era', 'material', 'category', 'size', 'weight', 'unearthed'];
+    const missing = (v) => !String(v || '').trim() || /^[（(]?待核对[）)]?$/.test(String(v || '').trim());
+    const unknown = (v) => {
+      const s = String(v || '').trim();
+      return !s || /^[（(]?待核对[）)]?$/.test(s) ? '未知' : s;
+    };
+    archiveFields.forEach((key) => {
+      if (missing(a[key])) a[key] = unknown(r[key]);
+    });
     a.updatedAt = nowISO();
     scheduleSave();
     closeModal();
@@ -1415,12 +1415,12 @@
     if (!ai) return;
     const a = findArtifact(ai.artifactId);
     if (!a) return;
-    const summary = a.summary || (a.name + '，' + (a.era || '年代待核对') + '。先用一句话说清它为什么重要：____。');
-    const story = '先请大家看这件' + a.name + '。它第一眼最打动人的地方是____。\n\n' +
-      '它' + (a.era ? '属于' + a.era : '的年代待核对') + (a.unearthed ? '，' + a.unearthed : '') + '。先说它的用途：____。再说它的工艺：____。最后说它背后的历史：____。\n\n' +
-      '（指向器物）请靠近看这个细节：____。它说明____。\n\n' +
-      '这件器物让我们看到____。接下来我们去看____。';
-    state.ui.ai.result = { summary, story, duration: a.duration || 3 };
+    const summary = a.summary || (a.name + '，' + (a.era || '年代待补') + '。先用一句话说清它为什么重要：____。');
+    const story = a.name + '，' + (a.era || '年代待补') + '。它最打动人的地方，是____。\n\n' +
+      '它的用途是____，工艺上____，背后是____。\n\n' +
+      '器身上有一个细节：____。这个细节说明____。\n\n' +
+      '这件器物让人看到____。';
+    state.ui.ai.result = { summary, story };
     state.ui.ai.error = '';
     renderModal();
     toast('已搭好框架。填上横线里的内容，就是你的讲解故事。');
@@ -1645,7 +1645,6 @@
         e.preventDefault();
         const next = !state.ui.sortMode;
         state.ui.sortMode = next;
-        if (next) state.ui.galleryFilter = 'all';
         renderApp();
         toast(next ? '排序模式：点 ↑↓ 调整顺序。' : '排序完成，已保存。');
         return;
@@ -1763,13 +1762,6 @@
       if (action === 'copy-script') {
         const a = findArtifact(el.getAttribute('data-id'));
         if (a) copyText('【一句话简介】\n' + (a.summary || '') + '\n\n【讲解故事】\n' + storyText(a), '讲解内容已复制，可以发到手机或打印。');
-        return;
-      }
-      if (action === 'gallery-filter') {
-        e.preventDefault();
-        state.ui.galleryFilter = el.getAttribute('data-filter') || 'all';
-        state.ui.sortMode = false;
-        renderApp();
         return;
       }
       if (action === 'review-filter') {
@@ -2154,12 +2146,12 @@
       imageCredit: String(fd.get('imageCredit') || '').trim(),
       summary: String(fd.get('summary') || '').trim(),
       story: String(fd.get('story') || '').trim(),
-      duration: clamp(Number(fd.get('duration')) || 3, 1, 30),
-      status: fd.get('status') === 'ready' ? 'ready' : 'draft',
-      notes: String(fd.get('notes') || '').trim(),
+      duration: clamp(Number(fd.get('duration')) || Number(base.duration) || 3, 1, 30),
+      notes: String(fd.get('notes') != null ? fd.get('notes') : (base.notes || '')).trim(),
       createdAt: base.createdAt || nowISO(),
       updatedAt: nowISO()
     };
+    delete artifact.status;
     const idx = state.data.artifacts.findIndex((a) => a.id === artifact.id);
     if (idx >= 0) state.data.artifacts[idx] = artifact;
     else state.data.artifacts.push(artifact);
