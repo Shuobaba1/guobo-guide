@@ -29,6 +29,7 @@
       editor: null,
       manager: null,
       ai: null,
+      cardMenu: null,
       reader: null,
       review: { galleryId: 'all', artifactId: null, revealed: false, count: 0 },
       lastArtifact: null
@@ -627,7 +628,8 @@
   }
   function artifactRow(a, active, sortMode) {
     const cc = a.colorCode || '';
-    return '<div class="artifact-row' + (cc ? ' cc-' + cc : '') + (active ? ' active' : '') + (sortMode ? ' sorting' : '') + '" data-action="open-artifact" data-id="' + esc(a.id) + '" draggable="' + (sortMode ? 'false' : 'true') + '" role="link" tabindex="0" aria-current="' + (active ? 'true' : 'false') + '" aria-label="' + esc(a.name) + '，' + colorLabel(cc) + '">' +
+    const canDrag = !sortMode && !('ontouchstart' in window) && window.matchMedia('(pointer: fine)').matches;
+    return '<div class="artifact-row' + (cc ? ' cc-' + cc : '') + (active ? ' active' : '') + (sortMode ? ' sorting' : '') + '" data-action="open-artifact" data-id="' + esc(a.id) + '" draggable="' + (canDrag ? 'true' : 'false') + '" role="link" tabindex="0" aria-current="' + (active ? 'true' : 'false') + '" aria-label="' + esc(a.name) + '，' + colorLabel(cc) + '">' +
       '<div class="artifact-thumb">' + imageTag(a) + '</div>' +
       '<div class="artifact-row-main">' +
         '<span class="meta">' + esc(a.era) + ' · ' + esc(a.category || '文物') + '</span>' +
@@ -640,7 +642,7 @@
         '<span class="duration">' + icon('clock') + (a.duration || 3) + '′</span>' +
         (sortMode
           ? '<span class="sort-controls"><button type="button" data-action="move-up" data-id="' + esc(a.id) + '" aria-label="上移" title="上移">↑</button><button type="button" data-action="move-down" data-id="' + esc(a.id) + '" aria-label="下移" title="下移">↓</button></span>'
-          : '<span class="chev" aria-hidden="true">›</span>') +
+          : '<button type="button" class="card-menu-btn" data-action="card-menu" data-id="' + esc(a.id) + '" aria-label="更多操作" aria-haspopup="dialog" title="更多操作">⋯</button>') +
       '</div>' +
     '</div>';
   }
@@ -682,6 +684,35 @@
     arr[j] = tmp;
     scheduleSave();
     renderApp();
+  }
+  function deleteArtifact(id) {
+    const a = findArtifact(id);
+    if (!a) return;
+    const index = state.data.artifacts.findIndex((x) => x.id === id);
+    if (index < 0) return;
+    const snapshot = clone(a);
+    state.data.artifacts.splice(index, 1);
+    scheduleSave();
+    closeModal();
+    const route = state.ui.route;
+    if ((route.name === 'artifact' && route.id === id) || (route.name === 'gallery' && route.selectedId === id)) {
+      navigate('#/g/' + encodeURIComponent(a.galleryId));
+    } else {
+      renderApp();
+    }
+    toast('已删除“' + a.name + '”', {
+      label: '撤销',
+      duration: 3000,
+      onClick: () => restoreArtifact(snapshot, index)
+    });
+  }
+  function restoreArtifact(a, index) {
+    if (!a || findArtifact(a.id)) return;
+    const pos = Math.min(Math.max(Number(index) || 0, 0), state.data.artifacts.length);
+    state.data.artifacts.splice(pos, 0, a);
+    scheduleSave();
+    renderApp();
+    toast('已恢复“' + a.name + '”');
   }
 
   /* ---------------- artifact detail ---------------- */
@@ -889,7 +920,7 @@
           '<div class="about-block"><strong>它是什么：</strong>一个单机优先的讲解员工作台。目录按“单元 → 文物 → 简介 / 讲解故事”组织，内容可随时增删改；AI 只负责按统一格式起草，最终解释权在你。</div>' +
           '<div class="about-block"><strong>示例内容：</strong>13 件文物为讲解练习草稿，依据国博官网公开资料整理，但年代、尺寸、出土地和叙事解释仍应以展厅说明牌与最新研究为准。</div>' +
           '<div class="about-block"><strong>图片版权：</strong>示例图片来自中国国家博物馆官网，版权归原权利人所有，仅用于个人学习与讲解准备，请勿商用或公开再分发。</div>' +
-          '<div class="about-block"><strong>技术：</strong>原生 HTML / CSS / JavaScript，无框架、无账号、无云端。数据保存在 IndexedDB，支持导出 JSON。版本 0.7.0 · 可行性原型。</div>' +
+          '<div class="about-block"><strong>技术：</strong>原生 HTML / CSS / JavaScript，无框架、无账号、无云端。数据保存在 IndexedDB，支持导出 JSON。版本 0.8.0 · 可行性原型。</div>' +
         '</section>' +
       '</div>' +
     '</main>';
@@ -901,6 +932,7 @@
     if (type === 'editor') state.ui.editor = payload;
     if (type === 'galleries') state.ui.manager = payload || { editing: null, form: null };
     if (type === 'ai') state.ui.ai = payload;
+    if (type === 'card-menu') state.ui.cardMenu = payload;
     renderModal();
     document.body.classList.add('modal-open');
   }
@@ -909,6 +941,7 @@
     state.ui.editor = null;
     state.ui.ai = null;
     state.ui.manager = null;
+    state.ui.cardMenu = null;
     renderModal();
     document.body.classList.remove('modal-open');
   }
@@ -923,6 +956,7 @@
     if (state.ui.modal === 'editor') html = editorModal();
     else if (state.ui.modal === 'galleries') html = galleriesModal();
     else if (state.ui.modal === 'ai') html = aiModal();
+    else if (state.ui.modal === 'card-menu') html = cardMenuModal();
     root.innerHTML = html;
     document.body.classList.add('modal-open');
   }
@@ -1106,6 +1140,19 @@
             '<button class="btn btn-primary btn-sm" type="submit">保存</button></div>' +
         '</div>' +
       '</form>' +
+    '</div></div>';
+  }
+  function cardMenuModal() {
+    const menu = state.ui.cardMenu;
+    const a = menu && findArtifact(menu.artifactId);
+    if (!a) return '';
+    return '<div class="modal-backdrop" data-action="modal-backdrop"><div class="modal card-menu-sheet" role="dialog" aria-modal="true" aria-labelledby="card-menu-title">' +
+      '<div class="modal-head"><div><p class="kicker">文物操作</p><h2 id="card-menu-title">' + esc(a.name) + '</h2><p>' + esc(galleryName(a.galleryId)) + ' · ' + esc(a.era || '年代未填') + '</p></div><button class="icon-btn close" type="button" data-action="close-modal" aria-label="关闭">' + icon('close') + '</button></div>' +
+      '<div class="modal-body card-menu-body">' +
+        '<button type="button" class="card-menu-item" data-action="edit-artifact" data-id="' + esc(a.id) + '">' + icon('edit') + '<span>编辑这件文物</span></button>' +
+        '<button type="button" class="card-menu-item danger" data-action="delete-card" data-id="' + esc(a.id) + '">' + icon('trash') + '<span>删除</span><small>3 秒内可撤销</small></button>' +
+        '<button type="button" class="card-menu-item quiet" data-action="close-modal">取消</button>' +
+      '</div>' +
     '</div></div>';
   }
   function readImageFile(file) {
@@ -1520,13 +1567,38 @@
   }
 
   /* ---------------- actions ---------------- */
-  function toast(message) {
+  function toast(message, options) {
     const el = document.getElementById('toast');
     if (!el) return;
-    el.textContent = message;
+    const opts = options || {};
+    el.textContent = '';
+    const text = document.createElement('span');
+    text.textContent = message;
+    el.appendChild(text);
+    el.classList.toggle('has-action', !!(opts.label && typeof opts.onClick === 'function'));
+    if (opts.label && typeof opts.onClick === 'function') {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'toast-action';
+      btn.textContent = opts.label;
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        hideToast();
+        opts.onClick();
+      });
+      el.appendChild(btn);
+    }
     el.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+    toastTimer = setTimeout(hideToast, opts.duration || 3000);
+  }
+  function hideToast() {
+    const el = document.getElementById('toast');
+    if (!el) return;
+    clearTimeout(toastTimer);
+    toastTimer = null;
+    el.classList.remove('show', 'has-action');
   }
   async function copyText(text, message) {
     try {
@@ -1654,6 +1726,19 @@
         e.stopPropagation();
         const id = el.getAttribute('data-id');
         if (id) moveArtifact(id, action === 'move-up' ? -1 : 1);
+        return;
+      }
+      if (action === 'card-menu') {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = el.getAttribute('data-id');
+        if (id) openModal('card-menu', { artifactId: id });
+        return;
+      }
+      if (action === 'delete-card') {
+        e.preventDefault();
+        e.stopPropagation();
+        deleteArtifact(el.getAttribute('data-id'));
         return;
       }
       if (action === 'open-artifact') {
@@ -1807,14 +1892,8 @@
         return;
       }
       if (action === 'delete-artifact') {
-        const a = findArtifact(el.getAttribute('data-id'));
-        if (!a) return;
-        if (!confirm('删除“' + a.name + '”？这个操作不能撤销。')) return;
-        state.data.artifacts = state.data.artifacts.filter((x) => x.id !== a.id);
-        scheduleSave();
-        closeModal();
-        navigate('#/g/' + encodeURIComponent(a.galleryId));
-        toast('已删除。');
+        e.preventDefault();
+        deleteArtifact(el.getAttribute('data-id'));
         return;
       }
       if (action === 'gallery-new') {
@@ -2048,8 +2127,17 @@
       }
     });
 
+    document.addEventListener('contextmenu', (e) => {
+      const row = e.target.closest && e.target.closest('.artifact-row');
+      if (row) e.preventDefault();
+    });
+    document.addEventListener('selectstart', (e) => {
+      const row = e.target.closest && e.target.closest('.artifact-row');
+      if (row) e.preventDefault();
+    });
+
     document.addEventListener('dragstart', (e) => {
-      if (state.ui.sortMode) { e.preventDefault(); return; }
+      if (state.ui.sortMode || !window.matchMedia('(pointer: fine)').matches) { e.preventDefault(); return; }
       const row = e.target.closest && e.target.closest('.artifact-row');
       if (!row || state.ui.route.name !== 'gallery') return;
       dragId = row.getAttribute('data-id');
