@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f4efe4">
+  <meta name="description" content="国博“古代中国”讲解员的随身手册：按单元整理文物、AI 起草讲解词、随时复习与扩展。">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="国博手册">
+  <meta name="format-detection" content="telephone=no">
+  <title>国博讲解手册 · 古代中国</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="assets/icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon-180.png">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+  <script>
+    try {
+      var t = localStorage.getItem('guobo-theme');
+      if (['paper', 'white', 'ink', 'slate'].indexOf(t) >= 0) document.documentElement.dataset.theme = t;
+    } catch (e) {}
+  </script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="paper-grain" aria-hidden="true"></div>
+  <a class="skip-link" href="#app">跳到主要内容</a>
+  <div id="app"></div>
+  <div id="modal-root"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <noscript>
+    <div class="noscript">这个手册需要启用 JavaScript 才能使用。</div>
+  </noscript>
+  <script src="catalog.js"></script>
+  <script src="content.js"></script>
+  <script src="seed.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

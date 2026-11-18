@@ -1,0 +1,22 @@
+# 本地运行与构建产物
+node_modules/
+.chrome-profile/
+shots/
+*.log
+.env
+.env.*
+!.env.example
+Thumbs.db
+.DS_Store
+.DS_Store?
+ehthumbs.db
+
+# 对外压缩包按需生成，不进入版本历史
+release/
+
+# 抓取缓存（可重新生成）
+tools/cache/
+
+# 临时文件
+tmp*
+~$*
