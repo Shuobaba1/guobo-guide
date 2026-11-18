@@ -30,6 +30,7 @@
       manager: null,
       ai: null,
       cardMenu: null,
+      quick: null,
       reader: null,
       review: { galleryId: 'all', artifactId: null, revealed: false, count: 0 },
       lastArtifact: null
@@ -920,7 +921,7 @@
           '<div class="about-block"><strong>它是什么：</strong>一个单机优先的讲解员工作台。目录按“单元 → 文物 → 简介 / 讲解故事”组织，内容可随时增删改；AI 只负责按统一格式起草，最终解释权在你。</div>' +
           '<div class="about-block"><strong>示例内容：</strong>13 件文物为讲解练习草稿，依据国博官网公开资料整理，但年代、尺寸、出土地和叙事解释仍应以展厅说明牌与最新研究为准。</div>' +
           '<div class="about-block"><strong>图片版权：</strong>示例图片来自中国国家博物馆官网，版权归原权利人所有，仅用于个人学习与讲解准备，请勿商用或公开再分发。</div>' +
-          '<div class="about-block"><strong>技术：</strong>原生 HTML / CSS / JavaScript，无框架、无账号、无云端。数据保存在 IndexedDB，支持导出 JSON。版本 0.8.0 · 可行性原型。</div>' +
+          '<div class="about-block"><strong>技术：</strong>原生 HTML / CSS / JavaScript，无框架、无账号、无云端。数据保存在 IndexedDB，支持导出 JSON。版本 0.9.0 · 可行性原型。</div>' +
         '</section>' +
       '</div>' +
     '</main>';
@@ -933,6 +934,7 @@
     if (type === 'galleries') state.ui.manager = payload || { editing: null, form: null };
     if (type === 'ai') state.ui.ai = payload;
     if (type === 'card-menu') state.ui.cardMenu = payload;
+    if (type === 'quick') state.ui.quick = payload;
     renderModal();
     document.body.classList.add('modal-open');
   }
@@ -942,6 +944,7 @@
     state.ui.ai = null;
     state.ui.manager = null;
     state.ui.cardMenu = null;
+    state.ui.quick = null;
     renderModal();
     document.body.classList.remove('modal-open');
   }
@@ -957,6 +960,7 @@
     else if (state.ui.modal === 'galleries') html = galleriesModal();
     else if (state.ui.modal === 'ai') html = aiModal();
     else if (state.ui.modal === 'card-menu') html = cardMenuModal();
+    else if (state.ui.modal === 'quick') html = quickAddModal();
     root.innerHTML = html;
     document.body.classList.add('modal-open');
   }
@@ -1044,7 +1048,7 @@
       '</div>' +
       '<div class="catalog-count" id="catalog-count">' + e.pickerList.length + ' 件</div>' +
       '<div class="catalog-list" id="catalog-list">' + catalogListHTML(e.pickerList) + '</div>' +
-      '<div class="modal-foot"><span class="tiny muted">图片来自国博官网，仅限个人学习。</span><div class="right"><button class="btn btn-ghost btn-sm" type="button" data-action="manual-fill">手动填写</button><button class="btn btn-quiet btn-sm" type="button" data-action="close-modal">取消</button></div></div>' +
+      '<div class="modal-foot"><span class="tiny muted">图片来自国博官网，仅限个人学习。</span><div class="right"><button class="btn btn-ghost btn-sm" type="button" data-action="manual-fill">AI 快速添加</button><button class="btn btn-quiet btn-sm" type="button" data-action="close-modal">取消</button></div></div>' +
     '</div></div>';
   }
   function artifactFromCatalog(item, gid) {
@@ -1118,10 +1122,6 @@
               '</div>' +
             '</details>' +
           '</div>' +
-          (isNew ? '<div class="form-section">' +
-            '<h3>AI 起草 <span>OPTIONAL</span></h3>' +
-            '<div class="field"><label for="f-ai-instruction">给 AI 的补充提示（可选）</label><textarea id="f-ai-instruction" name="aiInstruction" class="textarea" rows="3" placeholder="例如：观众是小学生；重点讲铸造工艺；不要用‘首先、其次’。"></textarea><span class="hint">只用于这次 AI 起草；AI 会自动补齐空着的年代、材质、尺寸、重量等，未知会写“未知”。保存后可在 AI 面板里修改。</span></div>' +
-          '</div>' : '') +
           '<div class="form-section">' +
             '<h3>内容 <span>CONTENT</span></h3>' +
             '<div class="field"><label for="f-summary">一句话简介</label><textarea id="f-summary" name="summary" class="textarea" rows="3" maxlength="220" placeholder="40–70 字：它是什么，为什么值得停下来看。">' + esc(a.summary) + '</textarea></div>' +
@@ -1153,6 +1153,266 @@
         '<button type="button" class="card-menu-item danger" data-action="delete-card" data-id="' + esc(a.id) + '">' + icon('trash') + '<span>删除</span><small>3 秒内可撤销</small></button>' +
         '<button type="button" class="card-menu-item quiet" data-action="close-modal">取消</button>' +
       '</div>' +
+    '</div></div>';
+  }
+  function openQuickAdd(gid) {
+    const valid = state.data.galleries.some((g) => g.id === gid) ? gid : (state.data.galleries[0] && state.data.galleries[0].id);
+    openModal('quick', {
+      step: 'name',
+      galleryId: valid,
+      name: '',
+      candidates: [],
+      artifact: null,
+      result: null,
+      loading: false,
+      loadingText: '',
+      error: '',
+      hint: ''
+    });
+  }
+  function quickNorm(s) {
+    return String(s || '').toLowerCase().replace(/[\s·・，,。、“”"'‘’（）()【】\[\]\-—_]/g, '');
+  }
+  function quickLocalMatches(name) {
+    const q = quickNorm(name);
+    if (!q) return [];
+    const rows = [];
+    const seen = new Set();
+    for (const item of catalogItems()) {
+      const names = [item.n, item.a].filter(Boolean).map(quickNorm);
+      let score = 0;
+      for (const n of names) {
+        if (!n) continue;
+        if (n === q) score = Math.max(score, 100);
+        else if (n.includes(q) || q.includes(n)) score = Math.max(score, 60);
+      }
+      if (!score || seen.has(item.n)) continue;
+      seen.add(item.n);
+      const content = contentForCatalog(item) || {};
+      rows.push({
+        name: item.n,
+        era: content.era || item.e || '',
+        material: content.material || inferMaterial(item) || '',
+        category: content.category || inferCategory(item) || '',
+        museum: '中国国家博物馆',
+        note: '名录命中',
+        confidence: 'high',
+        source: '名录',
+        item
+      });
+    }
+    return rows.sort((a, b) => b.confidence.localeCompare(a.confidence) || a.name.length - b.name.length).slice(0, 6);
+  }
+  function quickParseCandidates(raw) {
+    let text = String(raw || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    if (start < 0 || end <= start) throw new Error('AI 没有返回 JSON。');
+    const obj = JSON.parse(text.slice(start, end + 1));
+    const list = Array.isArray(obj.candidates) ? obj.candidates : [];
+    const candidates = list
+      .filter((c) => c && typeof c.name === 'string' && c.name.trim())
+      .slice(0, 3)
+      .map((c) => {
+        const item = catalogItems().find((x) => quickNorm(x.n) === quickNorm(c.name) || (x.a && quickNorm(x.a) === quickNorm(c.name)));
+        return {
+          name: c.name.trim(),
+          era: String(c.era || ''),
+          material: String(c.material || ''),
+          category: String(c.category || ''),
+          museum: String(c.museum || '中国国家博物馆'),
+          note: String(c.note || ''),
+          confidence: ['high', 'medium', 'low'].includes(c.confidence) ? c.confidence : 'medium',
+          source: 'AI 推测',
+          item: item || null
+        };
+      });
+    if (!candidates.length) throw new Error('AI 没有给出明确的候选。');
+    return candidates;
+  }
+  function quickSearch() {
+    const q = state.ui.quick;
+    if (!q) return;
+    const input = document.getElementById('quick-name');
+    const name = String(input ? input.value : q.name || '').trim();
+    if (!name) { toast('先输入文物名称。'); return; }
+    q.name = name;
+    q.error = '';
+    q.candidates = quickLocalMatches(name);
+    if (q.candidates.length) {
+      q.step = 'candidates';
+      q.hint = '';
+    } else {
+      q.step = 'name';
+      q.hint = '321 件名录里没有找到。可以让 AI 识别，或完整手动填写。';
+    }
+    renderModal();
+  }
+  async function quickIdentify() {
+    const q = state.ui.quick;
+    if (!q) return;
+    const input = document.getElementById('quick-name');
+    const name = String(input ? input.value : q.name || '').trim();
+    if (!name) { toast('先输入文物名称。'); return; }
+    q.name = name;
+    q.error = '';
+    if (!state.data.settings.apiKey) {
+      q.error = '还没有填写 API Key。可以先到设置里填，或使用“完整手动填写”。';
+      renderModal();
+      return;
+    }
+    q.loading = true;
+    q.loadingText = '正在识别可能的文物……';
+    renderModal();
+    try {
+      const system = [
+        '你是中国国家博物馆“古代中国”基本陈列的文物识别助手。',
+        '根据用户给的名字或近似名，返回最多 3 个可能文物，按可能性排序。',
+        '只返回 JSON：{"candidates":[{"name":"正式名称","era":"年代","material":"材质","category":"类别","museum":"馆藏","note":"一句判断依据","confidence":"high|medium|low"}]}。',
+        '不要编造精确尺寸、重量和出土地；没有把握的字段写“未知”。',
+        '不要返回图片，不要返回链接，不要解释。'
+      ].join('\n');
+      const user = '用户输入：' + name + '\n当前单元：' + galleryName(q.galleryId) + '\n请给出最可能的候选。';
+      const content = await chatCompletion([{ role: 'system', content: system }, { role: 'user', content: user }], 900);
+      const candidates = quickParseCandidates(content);
+      q.candidates = candidates;
+      q.step = 'candidates';
+      q.loading = false;
+      renderModal();
+    } catch (e) {
+      q.loading = false;
+      q.error = 'AI 识别失败：' + (e.message || String(e));
+      renderModal();
+    }
+  }
+  function quickChoose(index) {
+    const q = state.ui.quick;
+    if (!q) return;
+    const c = q.candidates[Number(index)];
+    if (!c) return;
+    const a = c.item ? artifactFromCatalog(c.item, q.galleryId) : newArtifactBase(q.galleryId);
+    a.id = uid('a-');
+    a.galleryId = q.galleryId;
+    a.name = c.name || a.name;
+    a.era = a.era || c.era || '';
+    a.material = a.material || c.material || '';
+    a.category = a.category || c.category || '';
+    a.museum = c.item ? (a.museum || c.museum || '中国国家博物馆') : (c.museum || a.museum || '中国国家博物馆');
+    a.image = a.image || '';
+    if (a.image) a.imageCredit = a.imageCredit || '中国国家博物馆官网';
+    q.artifact = a;
+    q.result = null;
+    q.error = '';
+    q.step = 'image';
+    renderModal();
+  }
+  async function quickGenerate() {
+    const q = state.ui.quick;
+    if (!q || !q.artifact) return;
+    if (!state.data.settings.apiKey) {
+      q.error = '还没有填写 API Key。可以先到设置里填，或使用“完整手动填写”。';
+      renderModal();
+      return;
+    }
+    q.loading = true;
+    q.loadingText = '正在生成简介、故事和档案……';
+    q.error = '';
+    renderModal();
+    try {
+      const p = buildPrompt(q.artifact, 'full', '');
+      const content = await chatCompletion([
+        { role: 'system', content: p.system },
+        { role: 'user', content: p.user }
+      ], 3000);
+      const r = parseAIJSON(content);
+      mergeAIResult(q.artifact, r, 'full');
+      q.artifact.updatedAt = nowISO();
+      q.result = r;
+      q.step = 'preview';
+      q.loading = false;
+      renderModal();
+    } catch (e) {
+      q.loading = false;
+      q.error = '生成失败：' + (e.message || String(e));
+      renderModal();
+    }
+  }
+  function quickSave() {
+    const q = state.ui.quick;
+    if (!q || !q.artifact) return;
+    const a = q.artifact;
+    a.id = a.id || uid('a-');
+    a.createdAt = a.createdAt || nowISO();
+    a.updatedAt = nowISO();
+    state.data.artifacts.push(a);
+    scheduleSave();
+    closeModal();
+    navigate('#/a/' + encodeURIComponent(a.id));
+    toast('卡片已生成并保存。');
+  }
+  function quickManual() {
+    const q = state.ui.quick;
+    if (!q) return;
+    const gid = q.galleryId;
+    const name = q.name || '';
+    closeModal();
+    openModal('editor', {
+      mode: 'new',
+      picker: false,
+      query: '',
+      scope: 'all',
+      pickerList: [],
+      artifact: Object.assign(newArtifactBase(gid), { name })
+    });
+  }
+  function quickAddModal() {
+    const q = state.ui.quick;
+    if (!q) return '';
+    const a = q.artifact;
+    let body = '';
+    if (q.loading) {
+      body = '<div class="ai-loading"><span class="spinner"></span><span>' + esc(q.loadingText || '正在处理……') + '</span></div>';
+    } else if (q.step === 'name') {
+      body = '<div class="quick-step">' +
+        '<label class="quick-label" for="quick-name">文物名称</label>' +
+        '<div class="quick-search-row"><input id="quick-name" class="input" type="text" value="' + esc(q.name) + '" placeholder="例如：后母戊鼎、陶猪、错金银犀尊" autocomplete="off"><button class="btn btn-primary btn-sm" type="button" data-action="quick-search">查找</button></div>' +
+        (q.hint ? '<p class="quick-hint">' + esc(q.hint) + '</p>' : '<p class="quick-hint">先查 321 件名录；本地没有，再让 AI 识别。</p>') +
+        '<div class="quick-actions"><button class="btn btn-ghost btn-sm" type="button" data-action="quick-ai">' + icon('sparkle') + '让 AI 识别</button><button class="text-btn" type="button" data-action="quick-manual">完整手动填写</button></div>' +
+      '</div>';
+    } else if (q.step === 'candidates') {
+      body = '<p class="quick-lead">确认是哪一件；不确定可以重新输入。</p>' +
+        '<div class="quick-candidates">' + q.candidates.map((c, i) =>
+          '<button class="quick-candidate" type="button" data-action="quick-choose" data-index="' + i + '">' +
+            '<strong>' + esc(c.name) + '</strong>' +
+            '<span>' + [c.era, c.material, c.museum].filter(Boolean).map(esc).join(' · ') + '</span>' +
+            (c.note ? '<small>' + esc(c.note) + '</small>' : '') +
+            '<em>' + esc(c.source) + (c.confidence === 'low' ? ' · 不确定' : '') + '</em>' +
+          '</button>').join('') +
+        '</div>' +
+        '<div class="quick-actions"><button class="btn btn-ghost btn-sm" type="button" data-action="quick-ai">' + icon('sparkle') + '再让 AI 找</button><button class="text-btn" type="button" data-action="quick-restart">重新输入</button><button class="text-btn" type="button" data-action="quick-manual">都不是，完整手动填写</button></div>';
+    } else if (q.step === 'image') {
+      const src = safeUrl(a && a.image);
+      body = '<div class="quick-picked">' +
+        '<div class="quick-image-box">' + (src ? '<img src="' + esc(src) + '" alt="配图预览">' : '<span>' + esc(firstChar(a && a.name)) + '</span><small>文字占位图</small>') + '</div>' +
+        '<div class="quick-picked-main"><h3>' + esc(a && a.name) + '</h3><p>' + esc([a && a.era, a && a.material, a && a.category].filter(Boolean).join(' · ')) + '</p>' +
+          '<input type="file" id="quick-image-file" accept="image/*" class="hidden">' +
+          '<button class="btn btn-ghost btn-sm" type="button" data-action="quick-pick-image">' + icon('upload') + '上传图片</button>' +
+          '<p class="quick-hint">不传图就用文字占位图，之后可以在编辑里换。</p>' +
+        '</div>' +
+      '</div>' +
+      '<div class="quick-actions"><button class="btn btn-quiet btn-sm" type="button" data-action="quick-restart">返回</button><button class="btn btn-primary btn-sm" type="button" data-action="quick-generate">' + icon('sparkle') + '生成卡片内容</button><button class="text-btn" type="button" data-action="quick-manual">完整手动填写</button></div>';
+    } else if (q.step === 'preview') {
+      const archive = [['era', '年代'], ['material', '材质'], ['category', '类别'], ['size', '尺寸'], ['weight', '重量'], ['unearthed', '出土/来源']]
+        .map(([key, label]) => label + '：' + esc(a[key] || '未知')).join('<br>');
+      body = '<p class="quick-lead">AI 已生成，确认后保存；保存后仍可编辑。</p>' +
+        '<div class="ai-preview-block"><h4>一句话简介</h4><p>' + esc(a.summary || '') + '</p></div>' +
+        '<div class="ai-preview-block"><h4>讲解故事</h4><p>' + nl2br(a.story || '') + '</p></div>' +
+        '<div class="ai-preview-block"><h4>补齐档案</h4><p>' + archive + '</p></div>' +
+        '<div class="quick-actions"><button class="btn btn-quiet btn-sm" type="button" data-action="quick-back">返回改图</button><button class="btn btn-primary btn-sm" type="button" data-action="quick-save">保存卡片</button></div>';
+    }
+    return '<div class="modal-backdrop" data-action="modal-backdrop"><div class="modal wide quick-modal" role="dialog" aria-modal="true" aria-labelledby="quick-title">' +
+      '<div class="modal-head"><div><p class="kicker">AI 快速添加</p><h2 id="quick-title">' + (q.step === 'name' ? '先输入名字' : q.step === 'candidates' ? '确认是哪一件' : q.step === 'image' ? '配图和生成' : '预览卡片') + '</h2><p>文字由 AI 起草；不确定的会写“未知”。</p></div><button class="icon-btn close" type="button" data-action="close-modal" aria-label="关闭">' + icon('close') + '</button></div>' +
+      '<div class="modal-body">' + (q.error ? '<div class="error-box" style="margin-bottom:14px">' + esc(q.error) + '</div>' : '') + body + '</div>' +
     '</div></div>';
   }
   function readImageFile(file) {
@@ -1434,14 +1694,9 @@
       renderModal();
     }
   }
-  function applyAI() {
-    const ai = state.ui.ai;
-    if (!ai || !ai.result) return;
-    const a = findArtifact(ai.artifactId);
-    if (!a) return;
-    const r = ai.result;
-    if (ai.mode !== 'story' && r.summary) a.summary = r.summary;
-    if (ai.mode !== 'summary' && r.story) a.story = r.story;
+  function mergeAIResult(a, r, mode) {
+    if (mode !== 'story' && r.summary) a.summary = r.summary;
+    if (mode !== 'summary' && r.story) a.story = r.story;
     const archiveFields = ['era', 'material', 'category', 'size', 'weight', 'unearthed'];
     const missing = (v) => !String(v || '').trim() || /^[（(]?待核对[）)]?$/.test(String(v || '').trim());
     const unknown = (v) => {
@@ -1451,6 +1706,14 @@
     archiveFields.forEach((key) => {
       if (missing(a[key])) a[key] = unknown(r[key]);
     });
+    return a;
+  }
+  function applyAI() {
+    const ai = state.ui.ai;
+    if (!ai || !ai.result) return;
+    const a = findArtifact(ai.artifactId);
+    if (!a) return;
+    mergeAIResult(a, ai.result, ai.mode);
     a.updatedAt = nowISO();
     scheduleSave();
     closeModal();
@@ -1796,12 +2059,37 @@
         e.preventDefault();
         if (!state.ui.editor) return;
         const scope = state.ui.editor.scope;
-        state.ui.editor.artifact = newArtifactBase(scope === 'all' ? '' : scope);
-        state.ui.editor.picker = false;
-        state.ui.editor.query = '';
+        closeModal();
+        openQuickAdd(scope === 'all' ? '' : scope);
+        return;
+      }
+      if (action === 'quick-search') { quickSearch(); return; }
+      if (action === 'quick-ai') { quickIdentify(); return; }
+      if (action === 'quick-choose') { quickChoose(el.getAttribute('data-index')); return; }
+      if (action === 'quick-pick-image') {
+        const input = document.getElementById('quick-image-file');
+        if (input) input.click();
+        return;
+      }
+      if (action === 'quick-generate') { quickGenerate(); return; }
+      if (action === 'quick-save') { quickSave(); return; }
+      if (action === 'quick-back') {
+        if (state.ui.quick) state.ui.quick.step = 'image';
         renderModal();
         return;
       }
+      if (action === 'quick-restart') {
+        if (!state.ui.quick) return;
+        state.ui.quick.step = 'name';
+        state.ui.quick.candidates = [];
+        state.ui.quick.artifact = null;
+        state.ui.quick.result = null;
+        state.ui.quick.error = '';
+        state.ui.quick.hint = '';
+        renderModal();
+        return;
+      }
+      if (action === 'quick-manual') { quickManual(); return; }
       if (action === 'back-to-picker') {
         e.preventDefault();
         if (!state.ui.editor) return;
@@ -2073,6 +2361,18 @@
     });
 
     document.addEventListener('change', (e) => {
+      if (e.target.id === 'quick-image-file') {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        readImageFile(file).then((dataUrl) => {
+          if (!state.ui.quick || !state.ui.quick.artifact) return;
+          state.ui.quick.artifact.image = dataUrl;
+          state.ui.quick.artifact.imageCredit = '本人上传';
+          renderModal();
+          toast('图片已压缩，会随卡片保存在本机。');
+        }).catch((err) => toast(err.message));
+        e.target.value = '';
+      }
       if (e.target.id === 'image-file') {
         const file = e.target.files && e.target.files[0];
         if (!file) return;
@@ -2102,6 +2402,11 @@
         } else {
           navigate('#/a/' + encodeURIComponent(id));
         }
+        return;
+      }
+      if (e.key === 'Enter' && e.target.id === 'quick-name' && state.ui.quick) {
+        e.preventDefault();
+        quickSearch();
         return;
       }
       if (e.key === 'Enter' && e.target.id === 'catalog-search' && state.ui.editor && state.ui.editor.picker) {
