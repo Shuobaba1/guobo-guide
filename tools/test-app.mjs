@@ -198,6 +198,18 @@ const dragOrder = await evaluate(`(function(){
 })()`);
 check('拖动排序', dragOrder.split('|')[0] !== dragOrder.split('|')[1]);
 
+const rowsBeforeDelete = await evaluate('document.querySelectorAll(".artifact-row").length');
+await evaluate('document.querySelector(".artifact-row .card-menu-btn").click()');
+await waitFor('!!document.querySelector(".card-menu-sheet")');
+check('卡片菜单打开', await evaluate('!!document.querySelector(".card-menu-item.danger")'));
+await evaluate('document.querySelector("[data-action=delete-card]").click()');
+await waitFor(`document.querySelectorAll(".artifact-row").length === ${rowsBeforeDelete - 1}`);
+check('卡片菜单删除生效', await evaluate('!!document.querySelector(".toast-action")'));
+await evaluate('document.querySelector(".toast-action").click()');
+await waitFor(`document.querySelectorAll(".artifact-row").length === ${rowsBeforeDelete}`);
+check('三秒撤销恢复', await evaluate('document.querySelectorAll(".artifact-row").length') === rowsBeforeDelete);
+check('长按菜单被拦截', await evaluate('(function(){var row=document.querySelector(".artifact-row"); var e=new MouseEvent("contextmenu",{bubbles:true,cancelable:true}); row.dispatchEvent(e); return e.defaultPrevented;})()'));
+
 const saved = await evaluate('JSON.stringify({len: (localStorage.getItem("guobo-guide-v1")||"").length})');
 console.log('DATA', saved);
 if (errors.length) console.log('JS ERRORS', errors.slice(0, 5));
