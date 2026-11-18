@@ -46,23 +46,26 @@
 
 ## 5. 打开 GitHub Pages
 
+仓库里已经带了 `.github/workflows/pages.yml`，用 GitHub Actions 部署，避免旧版 Pages 构建卡住。
+
 1. 在浏览器打开你的仓库：`https://github.com/你的用户名/guobo-guide`；
 2. **Settings → Pages**；
-3. **Build and deployment → Source** 选 **Deploy from a branch**；
-4. Branch 选 **main**，文件夹选 **/(root)**；
-5. 点 **Save**；
-6. 等 1–2 分钟，刷新 Pages 页面，会显示：
+3. **Build and deployment → Source** 选 **GitHub Actions**；
+4. 打开 **Actions → Deploy static site to Pages**，确认最近一次是绿色；
+5. 等 1 分钟，刷新 Pages 页面，会显示：
 
 ```
 https://你的用户名.github.io/guobo-guide/
 ```
 
+如果 Source 里没有 GitHub Actions，先确认 `.github/workflows/pages.yml` 已经提交到 `main`。
+
 第一次打开如果 404，先等一会儿；仍然是 404 就检查：
 
 - 仓库根目录有没有 `index.html`；
-- Pages 的 branch 是不是 `main`、目录是不是 `/ (root)`；
+- Actions 里 `Deploy static site to Pages` 有没有失败；
 - 仓库是不是 Public；
-- Actions / Pages 页面有没有报错。
+- Pages 的 Source 是不是 **GitHub Actions**。
 
 ## 6. iPhone 安装
 
