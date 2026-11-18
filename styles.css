@@ -1174,6 +1174,51 @@ code, .mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monosp
 .card-menu-item small { margin-left: auto; color: var(--muted); font-size: 10px; }
 .card-menu-item.danger { color: var(--cinnabar); border-color: color-mix(in srgb, var(--cinnabar) 30%, var(--line)); }
 .card-menu-item.quiet { justify-content: center; color: var(--muted); }
+.quick-label { display: block; margin-bottom: 7px; color: var(--ink-2); font-size: 12px; font-weight: 600; letter-spacing: 0.04em; }
+.quick-search-row { display: flex; align-items: center; gap: 8px; }
+.quick-search-row .input { flex: 1; min-width: 0; }
+.quick-hint { margin-top: 9px; color: var(--muted); font-size: 11.5px; line-height: 1.7; }
+.quick-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; margin-top: 20px; }
+.quick-lead { margin-bottom: 12px; color: var(--ink-2); font-size: 13px; }
+.quick-candidates { display: grid; gap: 9px; }
+.quick-candidate {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--ink);
+  font-family: var(--sans);
+  text-align: left;
+}
+.quick-candidate:hover { border-color: var(--cinnabar); }
+.quick-candidate strong { font-family: var(--serif); font-size: 18px; }
+.quick-candidate span { color: var(--muted); font-size: 11.5px; }
+.quick-candidate small { color: var(--ink-2); font-size: 11px; line-height: 1.6; }
+.quick-candidate em { align-self: flex-start; margin-top: 2px; padding: 1px 7px; border-radius: 999px; background: var(--card-2); color: var(--muted); font-size: 9.5px; font-style: normal; }
+.quick-picked { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 16px; align-items: start; }
+.quick-image-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 132px;
+  overflow: hidden;
+  border: 1px dashed var(--line-strong);
+  border-radius: 14px;
+  background: var(--card-2);
+  color: var(--faint);
+}
+.quick-image-box img { width: 100%; height: 100%; min-height: 132px; object-fit: contain; padding: 8px; }
+.quick-image-box span { font-family: var(--serif); font-size: 48px; line-height: 1; }
+.quick-image-box small { color: var(--muted); font-size: 10px; }
+.quick-picked-main h3 { margin: 2px 0 5px; font-family: var(--serif); font-size: 23px; }
+.quick-picked-main p { color: var(--muted); font-size: 12px; line-height: 1.6; }
+.quick-picked-main .btn { margin-top: 12px; }
 @keyframes sheet-up { from { opacity: 0; transform: translateY(22px) scale(0.99); } to { opacity: 1; transform: none; } }
 .modal-head {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
