@@ -8,8 +8,8 @@
 | `build-catalog.mjs` | 抓取国博官网 8 个单元页的展品与缩略图，生成 `catalog.js`（需要联网；优先读 `tools/cache/`） |
 | `optimize-catalog-images.py` | 压缩 `assets/catalog/` 的缩略图（Pillow） |
 | `mock-ai.mjs` | 在 `127.0.0.1:4174` 起一个假的 OpenAI 兼容接口，验证生成 → 预览 → 应用 |
-| `test-app.mjs` | 45 项桌面端到端 UI 检查；需要 4173 服务 + Chrome CDP 9222 |
-| `test-mobile.mjs` | 33 项 iPhone 视口检查（390×844 + 横屏 844×390）；同样需要 4173 + CDP 9222 |
+| `test-app.mjs` | 48 项桌面端到端 UI 检查；需要 4173 服务 + Chrome CDP 9222 |
+| `test-mobile.mjs` | 36 项 iPhone 视口检查（390×844 + 横屏 844×390）；同样需要 4173 + CDP 9222 |
 | `cdp-shot.mjs` | 用 Chrome DevTools Protocol 给指定 URL 截图，调试响应式布局 |
 
 ## 跑 UI 测试
