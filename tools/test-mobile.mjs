@@ -45,12 +45,20 @@ check('无横向溢出', await ev('document.documentElement.scrollWidth <= inner
 check('底部导航显示', await ev('getComputedStyle(document.querySelector(".bottom-nav")).display !== "none"'));
 check('搜索框 16px 防缩放', (await ev('getComputedStyle(document.querySelector(".search-box input")).fontSize')) === '16px');
 check('Service Worker 已注册', await ev('navigator.serviceWorker.ready.then((r) => !!r.active)'));
-check('离线缓存版本 v22', await ev('caches.keys().then((keys) => keys.includes("guobo-guide-v22"))'));
+check('离线缓存版本 v23', await ev('caches.keys().then((keys) => keys.includes("guobo-guide-v23"))'));
 
 await ev('document.querySelector(".era-row").click()');
 await waitFor('!!document.querySelector(".artifact-row")');
 check('手机单元页单栏', await ev('!document.querySelector(".split-layout")'));
 check('手机顶部添加按钮', await ev('!!document.querySelector(".gallery-toolbar [data-action=add-artifact]")'));
+check('手机卡片菜单', await ev('!!document.querySelector(".card-menu-btn")'));
+check('手机卡片不启用拖拽', await ev('document.querySelector(".artifact-row").draggable === false'));
+check('手机长按菜单被拦截', await ev('(function(){var row=document.querySelector(".artifact-row"); var e=new MouseEvent("contextmenu",{bubbles:true,cancelable:true}); row.dispatchEvent(e); return e.defaultPrevented;})()'));
+await ev('document.querySelector(".card-menu-btn").click()');
+await waitFor('!!document.querySelector(".card-menu-sheet")');
+check('手机卡片菜单可打开', await ev('!!document.querySelector("[data-action=delete-card]")'));
+await ev('document.querySelector("[data-action=close-modal]").click()');
+await sleep(150);
 check('手机打开单元不自动聚焦', await ev('!["INPUT","TEXTAREA"].includes(document.activeElement.tagName)'));
 check('手机无校对入口', await ev('!document.body.innerText.includes("待校对") && !document.querySelector(".status")'));
 check('排序入口存在', await ev('!!document.querySelector(".sort-toggle")'));
