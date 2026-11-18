@@ -45,7 +45,7 @@ check('无横向溢出', await ev('document.documentElement.scrollWidth <= inner
 check('底部导航显示', await ev('getComputedStyle(document.querySelector(".bottom-nav")).display !== "none"'));
 check('搜索框 16px 防缩放', (await ev('getComputedStyle(document.querySelector(".search-box input")).fontSize')) === '16px');
 check('Service Worker 已注册', await ev('navigator.serviceWorker.ready.then((r) => !!r.active)'));
-check('离线缓存版本 v23', await ev('caches.keys().then((keys) => keys.includes("guobo-guide-v23"))'));
+check('离线缓存版本 v24', await ev('caches.keys().then((keys) => keys.includes("guobo-guide-v24"))'));
 
 await ev('document.querySelector(".era-row").click()');
 await waitFor('!!document.querySelector(".artifact-row")');
@@ -95,10 +95,19 @@ check('添加弹窗不超出屏幕', await ev('document.querySelector(".modal").
 check('手机添加不自动聚焦', await ev('!["INPUT","TEXTAREA"].includes(document.activeElement.tagName)'));
 check('名录搜索框 16px', (await ev('getComputedStyle(document.querySelector("#catalog-search")).fontSize')) === '16px');
 await ev('document.querySelector("[data-action=manual-fill]").click()');
+await waitFor('!!document.querySelector("#quick-name")');
+check('手机快速添加名称框', await ev('!!document.querySelector("#quick-name") && !document.querySelector("#artifact-form")'));
+check('手机快速添加不自动聚焦', await ev('!["INPUT","TEXTAREA"].includes(document.activeElement.tagName)'));
+await ev('document.querySelector("#quick-name").value="涡纹"; document.querySelector("[data-action=quick-search]").click()');
+await waitFor('!!document.querySelector(".quick-candidate")');
+check('手机快速添加候选', await ev('document.querySelectorAll(".quick-candidate").length > 0'));
+await ev('document.querySelector(".quick-candidate").click()');
+await waitFor('!!document.querySelector("#quick-image-file")');
+check('手机快速添加生成步骤', await ev('!!document.querySelector("[data-action=quick-generate]")'));
+await ev('document.querySelector("[data-action=quick-manual]").click()');
 await waitFor('!!document.querySelector("#f-name")');
-check('添加表单有 AI 提示', await ev('!!document.querySelector("#f-ai-instruction")'));
+check('手机添加表单已移除 AI 提示', await ev('!document.querySelector("#f-ai-instruction")'));
 check('手机新增表单精简', await ev('!document.querySelector("#f-notes") && !document.querySelector("#f-duration") && !document.querySelector("#f-status")'));
-check('手机 AI 提示在内容上方', await ev('document.querySelector("#f-ai-instruction").getBoundingClientRect().top < document.querySelector("#f-summary").getBoundingClientRect().top'));
 check('手机添加不自动聚焦', await ev('!["INPUT","TEXTAREA"].includes(document.activeElement.tagName)'));
 check('表单输入 16px', (await ev('getComputedStyle(document.querySelector("#f-name")).fontSize')) === '16px');
 await ev('document.querySelector("[data-action=close-modal]").click()');
