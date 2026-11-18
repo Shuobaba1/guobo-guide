@@ -2,7 +2,7 @@
  * 目的：首次打开后缓存页面与示例图片，展厅无网也能复习。
  * 更新内容后，把 CACHE 版本号 +1 即可让旧缓存失效。
  */
-const CACHE = 'guobo-guide-v21';
+const CACHE = 'guobo-guide-v22';
 const CORE = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const CORE = [
   './catalog.js',
   './content.js',
   './seed.js',
+  './stories.js',
   './app.js',
   './manifest.webmanifest',
   './assets/icons/icon-192.png',
