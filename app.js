@@ -6,6 +6,35 @@
   'use strict';
 
   const APP_NAME = '国博讲解手册';
+  const MUSEUM_KEY = 'guobo-museum';
+  const MUSEUMS = {
+    national: {
+      id: 'national',
+      name: '中国国家博物馆',
+      short: '国博',
+      seal: '国',
+      title: '国博讲解手册',
+      tagline: '古代中国 · 基本陈列',
+      sectionTitle: '按单元，走一条中国史',
+      searchPlaceholder: '搜文物、朝代、关键词……',
+      emptyHint: '先建立一个单元，比如“远古”或“专题：丝绸之路”。',
+      source: 'https://www.chnmuseum.cn/',
+      themeColor: '#f4efe4'
+    },
+    capital: {
+      id: 'capital',
+      name: '首都博物馆',
+      short: '首博',
+      seal: '首',
+      title: '首博讲解手册',
+      tagline: '馆藏精品 · 北京',
+      sectionTitle: '按门类，读一座北京城',
+      searchPlaceholder: '搜文物、年代、关键词……',
+      emptyHint: '先建立一个门类，比如“青铜器”或“陶瓷器”。',
+      source: 'https://www.capitalmuseum.org.cn/collection',
+      themeColor: '#e7eee8'
+    }
+  };
   const LS_KEY = 'guobo-guide-v1';
   const LAST_KEY = 'guobo-guide-last';
   const DB_NAME = 'guobo-guide';
@@ -18,11 +47,15 @@
     { id: 'ink', name: '墨色' },
     { id: 'slate', name: '青灰' }
   ];
+  const storedMuseum = (() => {
+    try { return localStorage.getItem(MUSEUM_KEY); } catch (e) { return ''; }
+  })();
 
   const state = {
     data: null,
     ui: {
       route: { name: 'home' },
+      museumId: MUSEUMS[storedMuseum] ? storedMuseum : 'national',
       query: '',
       sortMode: false,
       modal: null,
@@ -108,14 +141,51 @@
     const g = findGallery(gid);
     return g ? g.name : '未分类';
   }
+  function museumConfig(id) {
+    return MUSEUMS[id] || MUSEUMS.national;
+  }
+  function museumOfGallery(g) {
+    return g && MUSEUMS[g.museumId] ? g.museumId : 'national';
+  }
+  function museumOfArtifact(a) {
+    if (a && MUSEUMS[a.museumId]) return a.museumId;
+    const g = a ? findGallery(a.galleryId) : null;
+    return museumOfGallery(g);
+  }
+  function currentMuseum() {
+    return museumConfig(state.ui.museumId);
+  }
+  function museumGalleries(id) {
+    return state.data.galleries.filter((g) => museumOfGallery(g) === (id || state.ui.museumId));
+  }
+  function museumArtifacts(id) {
+    return state.data.artifacts.filter((a) => museumOfArtifact(a) === (id || state.ui.museumId));
+  }
+  function activeCatalog() {
+    return state.ui.museumId === 'capital' ? window.CAPITAL_CATALOG : window.CATALOG_DATA;
+  }
+  function applyMuseum(id, persist) {
+    const chosen = MUSEUMS[id] ? id : 'national';
+    state.ui.museumId = chosen;
+    document.documentElement.dataset.museum = chosen;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', museumConfig(chosen).themeColor);
+    if (persist) {
+      try { localStorage.setItem(MUSEUM_KEY, chosen); } catch (e) { /* ignore */ }
+    }
+    return chosen;
+  }
   function catalogItems() {
-    return (window.CATALOG_DATA && Array.isArray(window.CATALOG_DATA.items)) ? window.CATALOG_DATA.items : [];
+    const data = activeCatalog();
+    return data && Array.isArray(data.items) ? data.items : [];
   }
   function catalogUnitName(gid) {
-    const u = ((window.CATALOG_DATA && window.CATALOG_DATA.units) || []).find((x) => x.id === gid);
+    const data = activeCatalog();
+    const u = ((data && data.units) || []).find((x) => x.id === gid);
     return u ? u.name : galleryName(gid);
   }
   function contentForCatalog(item) {
+    if (state.ui.museumId !== 'national') return null;
     const data = window.CONTENT_DATA;
     if (!data || typeof data !== 'object' || !item) return null;
     return data[item.g + '|' + item.n] || null;
@@ -183,7 +253,7 @@
     return '';
   }
   function storyText(a) {
-    const override = window.STORY_OVERRIDES && window.STORY_OVERRIDES[a.name];
+    const override = museumOfArtifact(a) === 'national' && window.STORY_OVERRIDES && window.STORY_OVERRIDES[a.name];
     if (override && String(override).trim()) return String(override).trim();
     const s = String(a.story || '').trim();
     if (s) return s;
@@ -278,7 +348,11 @@
     const d = clone(window.SEED_DATA);
     d.settings = defaultSettings();
     const now = nowISO();
+    d.galleries.forEach((g) => {
+      g.museumId = g.museumId || 'national';
+    });
     d.artifacts.forEach((a) => {
+      a.museumId = a.museumId || 'national';
       a.createdAt = a.createdAt || now;
       a.updatedAt = a.updatedAt || now;
       delete a.status;
@@ -300,12 +374,32 @@
         name: String(g.name),
         period: String(g.period || ''),
         description: String(g.description || ''),
-        color: colorSafe(g.color)
+        color: colorSafe(g.color),
+        museumId: MUSEUMS[g.museumId] ? g.museumId : 'national'
       }));
     if (!galleries.length) throw new Error('至少需要一个单元。');
+    const capital = window.CAPITAL_CATALOG;
+    if (capital && Array.isArray(capital.units)) {
+      for (const unit of capital.units) {
+        if (!unit || !unit.id) continue;
+        if (!galleries.some((g) => g.id === unit.id)) {
+          galleries.push({
+            id: String(unit.id),
+            name: String(unit.name),
+            period: String(unit.period || '馆藏分类'),
+            description: String(unit.description || ''),
+            color: colorSafe(unit.color),
+            museumId: 'capital'
+          });
+        }
+      }
+    }
+    const galleryMap = new Map(galleries.map((g) => [g.id, g]));
     const ids = new Set(galleries.map((g) => g.id));
     const storyOf = (a) => {
-      const override = window.STORY_OVERRIDES && window.STORY_OVERRIDES[a.name];
+      const gid = ids.has(a.galleryId) ? a.galleryId : galleries[0].id;
+      const mid = MUSEUMS[a.museumId] ? a.museumId : museumOfGallery(galleryMap.get(gid));
+      const override = mid === 'national' && window.STORY_OVERRIDES && window.STORY_OVERRIDES[a.name];
       if (override && String(override).trim()) return String(override).trim();
       if (a.story && String(a.story).trim()) return String(a.story).trim();
       const sc = a.script || {};
@@ -317,6 +411,7 @@
         ...a,
         id: String(a.id),
         galleryId: ids.has(a.galleryId) ? a.galleryId : galleries[0].id,
+        museumId: MUSEUMS[a.museumId] ? a.museumId : museumOfGallery(galleryMap.get(ids.has(a.galleryId) ? a.galleryId : galleries[0].id)),
         name: String(a.name),
         alias: String(a.alias || ''),
         era: String(a.era || a.date || ''),
@@ -423,11 +518,16 @@
   function header(route) {
     const active = (name) => route.name === name ? 'active' : '';
     const isHome = route.name === 'home';
+    const museum = currentMuseum();
     return '<header class="app-header"><div class="header-inner">' +
       (isHome ? '' : '<button class="icon-btn" data-action="go-back" aria-label="返回">' + icon('arrowLeft') + '</button>') +
-      '<a class="brand" href="#/" aria-label="回到目录">' +
-        '<span class="seal">国</span>' +
-        '<span class="brand-copy"><strong>国博讲解手册</strong><small>古代中国 · 基本陈列</small></span>' +
+      '<a class="brand" href="#/" aria-label="回到' + esc(museum.name) + '目录">' +
+        '<span class="seal">' + esc(museum.seal) + '</span>' +
+        '<span class="brand-copy"><strong>' + esc(museum.title) + '</strong><small>' + esc(museum.tagline) + '</small>' +
+          '<span class="museum-switch" role="group" aria-label="切换博物馆">' +
+            ['national', 'capital'].map((id) => '<button type="button" data-action="switch-museum" data-museum="' + id + '" class="' + (museum.id === id ? 'active' : '') + '" aria-pressed="' + (museum.id === id ? 'true' : 'false') + '">' + MUSEUMS[id].short + '</button>').join('') +
+          '</span>' +
+        '</span>' +
       '</a>' +
       '<div class="header-spacer"></div>' +
       '<nav class="top-nav" aria-label="主导航">' +
@@ -450,6 +550,7 @@
     '</nav>';
   }
   function renderApp() {
+    applyMuseum(state.ui.museumId, false);
     const route = state.ui.route || parseRoute();
     const view = route.name === 'gallery' ? galleryView(route.id, route.selectedId)
       : route.name === 'artifact' ? artifactView(route.id)
@@ -457,17 +558,30 @@
       : route.name === 'settings' ? settingsView()
       : homeView();
     document.getElementById('app').innerHTML = header(route) + view + bottomNav(route);
+    const museum = currentMuseum();
     const selected = route.name === 'artifact' ? findArtifact(route.id) : route.name === 'gallery' && route.selectedId ? findArtifact(route.selectedId) : null;
     document.title = selected
-      ? selected.name + ' · ' + APP_NAME
-      : route.name === 'review' ? '复习 · ' + APP_NAME
-      : route.name === 'settings' ? '设置 · ' + APP_NAME
-      : route.name === 'gallery' ? (findGallery(route.id) ? findGallery(route.id).name : '目录') + ' · ' + APP_NAME
-      : APP_NAME + ' · 古代中国';
+      ? selected.name + ' · ' + museum.title
+      : route.name === 'review' ? '复习 · ' + museum.title
+      : route.name === 'settings' ? '设置 · ' + museum.title
+      : route.name === 'gallery' ? (findGallery(route.id) ? findGallery(route.id).name : '目录') + ' · ' + museum.title
+      : museum.title + ' · ' + museum.tagline;
   }
   function onRoute() {
     const prev = state.ui.route;
     const route = parseRoute();
+    let routeMuseum = null;
+    if (route.name === 'gallery') {
+      const g = findGallery(route.id);
+      if (g) routeMuseum = museumOfGallery(g);
+    } else if (route.name === 'artifact') {
+      const a = findArtifact(route.id);
+      if (a) routeMuseum = museumOfArtifact(a);
+    }
+    if (routeMuseum && routeMuseum !== state.ui.museumId) {
+      applyMuseum(routeMuseum, true);
+      state.ui.review = { galleryId: 'all', artifactId: null, revealed: false, count: 0 };
+    }
     if (route.name === 'gallery' && route.selectedId && !isSplitView()) {
       replaceRoute('#/a/' + encodeURIComponent(route.selectedId));
       return;
@@ -501,13 +615,14 @@
 
   /* ---------------- home ---------------- */
   function homeView() {
-    const data = state.data;
-    const galleries = data.galleries;
-    const artifacts = data.artifacts;
-    const minutes = totalMinutes();
+    const museum = currentMuseum();
+    const galleries = museumGalleries();
+    const artifacts = museumArtifacts();
+    const minutes = artifacts.reduce((sum, a) => sum + (Number(a.duration) || 0), 0);
     const theme = currentTheme();
     const lastId = (() => { try { return localStorage.getItem(LAST_KEY); } catch (e) { return null; } })();
-    const last = findArtifact(lastId);
+    const lastCandidate = findArtifact(lastId);
+    const last = lastCandidate && museumOfArtifact(lastCandidate) === museum.id ? lastCandidate : null;
     const next = last || artifacts[0];
     const q = state.ui.query || '';
 
@@ -518,6 +633,7 @@
         '<p class="hero-hint">' +
           (last ? '<span>上次：' + esc(last.name) + '</span><span class="sep">·</span>' : '') +
           '<span class="hero-stats" aria-label="手册统计">' + galleries.length + ' 单元 · ' + artifacts.length + ' 件文物 · 约 ' + minutes + ' 分钟</span>' +
+          (museum.id === 'capital' ? '<span class="sep">·</span><span class="hero-stats">名录 ' + catalogItems().length + ' 件可添加</span>' : '') +
         '</p>' +
         '<div class="theme-switch" role="group" aria-label="底色">' +
           '<span class="theme-label">底色</span>' +
@@ -527,17 +643,17 @@
 
       '<section class="section">' +
         '<div class="section-head">' +
-          '<div><p class="kicker">目录</p><h2>按单元，走一条中国史</h2></div>' +
+          '<div><p class="kicker">' + esc(museum.name) + '</p><h2>' + esc(museum.sectionTitle) + '</h2></div>' +
           '<div class="head-actions"><button class="text-btn" data-action="add-artifact">＋ 新文物</button><button class="text-btn" data-action="manage-galleries">管理单元</button></div>' +
         '</div>' +
         '<div class="search-box">' + icon('search') +
-          '<input id="home-search" type="search" placeholder="搜文物、朝代、关键词……" value="' + esc(q) + '" autocomplete="off" aria-label="搜索文物">' +
+          '<input id="home-search" type="search" placeholder="' + esc(museum.searchPlaceholder) + '" value="' + esc(q) + '" autocomplete="off" aria-label="搜索文物">' +
           '<kbd>Ctrl K</kbd>' +
         '</div>' +
         '<div id="search-results" class="search-results ' + (q ? '' : 'hidden') + '">' + (q ? searchResultsHTML(q) : '') + '</div>' +
         '<div id="timeline" class="timeline ' + (q ? 'hidden' : '') + '">' +
           (galleries.length ? galleries.map((g, i) => galleryCard(g, i)).join('') :
-            '<div class="empty-state"><div class="glyph">册</div><h3>还没有单元</h3><p>先建立一个单元，比如“远古”或“专题：丝绸之路”。</p><button class="btn btn-primary btn-sm" data-action="manage-galleries">建立第一个单元</button></div>') +
+            '<div class="empty-state"><div class="glyph">册</div><h3>还没有单元</h3><p>' + esc(museum.emptyHint) + '</p><button class="btn btn-primary btn-sm" data-action="manage-galleries">建立第一个单元</button></div>') +
         '</div>' +
       '</section>' +
       '</div>' +
@@ -568,7 +684,7 @@
   }
   function searchResultsHTML(q) {
     const needle = q.toLowerCase();
-    const hits = state.data.artifacts.filter((a) => {
+    const hits = museumArtifacts().filter((a) => {
       const hay = [a.name, a.alias, a.era, a.date, a.summary, a.museum, (a.tags || []).join(' '), galleryName(a.galleryId)].join(' ').toLowerCase();
       return hay.indexOf(needle) >= 0;
     }).slice(0, 8);
@@ -777,7 +893,7 @@
               '<div class="panel-head"><h2>我的笔记</h2><button class="text-btn" data-action="edit-artifact" data-id="' + esc(a.id) + '">写笔记</button></div>' +
               '<div class="notes-box">' + esc(a.notes || '') + '</div>' +
             '</section>' +
-            '<p class="detail-footnote">本页为讲解练习草稿，请以展厅说明牌、中国国家博物馆官网及最新研究为准。文物图片版权归中国国家博物馆所有，仅限个人学习使用。</p>' +
+            '<p class="detail-footnote">本页为讲解练习草稿，请以展厅说明牌、' + esc(museumConfig(museumOfArtifact(a)).name) + '官网及最新研究为准。文物图片版权归原权利人所有，仅限个人学习使用。</p>' +
           '</div>' +
         '</div>';
   }
@@ -789,7 +905,7 @@
   /* ---------------- review ---------------- */
   function reviewPool() {
     const gid = state.ui.review.galleryId || 'all';
-    return state.data.artifacts.filter((a) => gid === 'all' ? true : a.galleryId === gid);
+    return museumArtifacts().filter((a) => gid === 'all' ? true : a.galleryId === gid);
   }
   function initReview(force) {
     const pool = reviewPool();
@@ -801,7 +917,8 @@
   }
   function reviewView() {
     const pool = reviewPool();
-    const gid = state.ui.review.galleryId || 'all';
+    const museumGalleriesList = museumGalleries();
+    const gid = museumGalleriesList.some((g) => g.id === state.ui.review.galleryId) ? state.ui.review.galleryId : 'all';
     const a = findArtifact(state.ui.review.artifactId) || pool[0];
     if (!a) {
       return '<main class="page"><div class="shell"><div class="review-head"><p class="kicker">复习</p><h1>还没有可复习的文物</h1><p>先到目录里添加几件，或者换一个单元。</p></div><div class="empty-state"><div class="glyph">空</div><h3>这个单元是空的</h3><p>添加文物后，这里会随机抽题，帮你在上台前快速过一遍。</p><a class="btn btn-primary btn-sm" href="#/">回目录</a></div></div></main>';
@@ -822,7 +939,7 @@
         '<div class="review-controls">' +
           '<div class="filter-row">' +
             '<button class="chip chip-btn ' + (gid === 'all' ? 'active' : '') + '" data-action="review-filter" data-gallery="all">全部</button>' +
-            state.data.galleries.map((gg) => '<button class="chip chip-btn ' + (gid === gg.id ? 'active' : '') + '" data-action="review-filter" data-gallery="' + esc(gg.id) + '">' + esc(gg.name) + '</button>').join('') +
+            museumGalleriesList.map((gg) => '<button class="chip chip-btn ' + (gid === gg.id ? 'active' : '') + '" data-action="review-filter" data-gallery="' + esc(gg.id) + '">' + esc(gg.name) + '</button>').join('') +
           '</div>' +
           '<span class="tiny muted">本轮已复习 ' + state.ui.review.count + ' 件</span>' +
         '</div>' +
@@ -920,8 +1037,8 @@
           '<h2>关于这本手册</h2>' +
           '<div class="about-block"><strong>它是什么：</strong>一个单机优先的讲解员工作台。目录按“单元 → 文物 → 简介 / 讲解故事”组织，内容可随时增删改；AI 只负责按统一格式起草，最终解释权在你。</div>' +
           '<div class="about-block"><strong>示例内容：</strong>13 件文物为讲解练习草稿，依据国博官网公开资料整理，但年代、尺寸、出土地和叙事解释仍应以展厅说明牌与最新研究为准。</div>' +
-          '<div class="about-block"><strong>图片版权：</strong>示例图片来自中国国家博物馆官网，版权归原权利人所有，仅用于个人学习与讲解准备，请勿商用或公开再分发。</div>' +
-          '<div class="about-block"><strong>技术：</strong>原生 HTML / CSS / JavaScript，无框架、无账号、无云端。数据保存在 IndexedDB，支持导出 JSON。版本 0.9.0 · 可行性原型。</div>' +
+          '<div class="about-block"><strong>图片版权：</strong>示例图片来自中国国家博物馆、首都博物馆官网，版权归原权利人所有，仅用于个人学习与讲解准备，请勿商用或公开再分发。</div>' +
+          '<div class="about-block"><strong>技术：</strong>原生 HTML / CSS / JavaScript，无框架、无账号、无云端。数据保存在 IndexedDB，支持导出 JSON。版本 1.0.0 · 正式版。</div>' +
         '</section>' +
       '</div>' +
     '</main>';
@@ -967,10 +1084,14 @@
 
   /* ---------------- editor ---------------- */
   function newArtifactBase(gid) {
+    const fallbackGallery = museumGalleries()[0] || state.data.galleries[0] || {};
+    const chosen = gid && findGallery(gid) ? gid : fallbackGallery.id;
+    const gallery = findGallery(chosen);
+    const museumId = museumOfGallery(gallery);
     return {
-      id: '', galleryId: gid || (state.data.galleries[0] && state.data.galleries[0].id),
+      id: '', galleryId: chosen, museumId,
       name: '', alias: '', era: '', date: '', material: '', category: '',
-      size: '', weight: '', unearthed: '', museum: '中国国家博物馆', image: '', imageCredit: '',
+      size: '', weight: '', unearthed: '', museum: museumConfig(museumId).name, image: '', imageCredit: '',
       summary: '', story: '', facts: [], script: { opening: '', body: '', highlight: '', closing: '' },
       tags: [], duration: 3, colorCode: '', notes: '', sources: []
     };
@@ -987,7 +1108,7 @@
       mode: 'new',
       picker: true,
       query: '',
-      scope: state.data.galleries.some((g) => g.id === gid) ? gid : 'all',
+      scope: museumGalleries().some((g) => g.id === gid) ? gid : 'all',
       pickerList: [],
       artifact: newArtifactBase(gid)
     });
@@ -1039,36 +1160,41 @@
   function catalogPickerModal() {
     const e = state.ui.editor;
     e.pickerList = catalogMatches(e.scope, e.query);
-    const scopes = [{ id: 'all', name: '全部' }].concat(state.data.galleries.map((g) => ({ id: g.id, name: g.name })));
+    const scopes = [{ id: 'all', name: '全部' }].concat(museumGalleries().map((g) => ({ id: g.id, name: g.name })));
+    const museum = currentMuseum();
     return '<div class="modal-backdrop" data-action="modal-backdrop"><div class="modal wide picker-modal" role="dialog" aria-modal="true" aria-labelledby="picker-title">' +
-      '<div class="modal-head"><div><p class="kicker">添加文物</p><h2 id="picker-title">从名录里选一件</h2><p>共 ' + catalogItems().length + ' 件「古代中国」展品；选中后自动填表。</p></div><button class="icon-btn close" data-action="close-modal" aria-label="关闭">' + icon('close') + '</button></div>' +
+      '<div class="modal-head"><div><p class="kicker">添加文物</p><h2 id="picker-title">从' + esc(museum.short) + '名录里选一件</h2><p>共 ' + catalogItems().length + ' 件' + (museum.id === 'capital' ? '「馆藏精品」' : '「古代中国」') + '展品；选中后自动填表。</p></div><button class="icon-btn close" data-action="close-modal" aria-label="关闭">' + icon('close') + '</button></div>' +
       '<div class="picker-search-wrap">' +
         '<div class="catalog-search">' + icon('search') + '<input id="catalog-search" type="search" value="' + esc(e.query) + '" placeholder="搜名称、又名、年代、出土地……" autocomplete="off"></div>' +
         '<div class="scope-row">' + scopes.map((s) => '<button type="button" class="chip chip-btn ' + (e.scope === s.id ? 'active' : '') + '" data-action="catalog-scope" data-scope="' + esc(s.id) + '">' + esc(s.name) + '</button>').join('') + '</div>' +
       '</div>' +
       '<div class="catalog-count" id="catalog-count">' + e.pickerList.length + ' 件</div>' +
       '<div class="catalog-list" id="catalog-list">' + catalogListHTML(e.pickerList) + '</div>' +
-      '<div class="modal-foot"><span class="tiny muted">图片来自国博官网，仅限个人学习。</span><div class="right"><button class="btn btn-ghost btn-sm" type="button" data-action="manual-fill">AI 快速添加</button><button class="btn btn-quiet btn-sm" type="button" data-action="close-modal">取消</button></div></div>' +
+      '<div class="modal-foot"><span class="tiny muted">图片来自' + esc(museum.short) + '官网，仅限个人学习。</span><div class="right"><button class="btn btn-ghost btn-sm" type="button" data-action="manual-fill">AI 快速添加</button><button class="btn btn-quiet btn-sm" type="button" data-action="close-modal">取消</button></div></div>' +
     '</div></div>';
   }
   function artifactFromCatalog(item, gid) {
     const base = newArtifactBase(gid);
     const content = contentForCatalog(item) || {};
+    const catalog = activeCatalog() || {};
+    const museumId = catalog.museumId || state.ui.museumId;
     return Object.assign(base, {
-      galleryId: state.data.galleries.some((g) => g.id === item.g) ? item.g : base.galleryId,
+      galleryId: state.data.galleries.some((g) => g.id === item.g && museumOfGallery(g) === museumId) ? item.g : base.galleryId,
+      museumId,
+      museum: catalog.name || museumConfig(museumId).name,
       name: item.n,
       alias: item.a || '',
       era: content.era || item.e || '',
-      material: content.material || inferMaterial(item),
-      category: content.category || inferCategory(item),
+      material: content.material || item.m || inferMaterial(item),
+      category: content.category || item.c || inferCategory(item),
       size: content.size || item.d || '',
       weight: content.weight || item.w || '',
       unearthed: content.unearthed || item.u || '',
-      summary: content.summary || '',
-      story: (window.STORY_OVERRIDES && window.STORY_OVERRIDES[item.n]) || content.story || '',
+      summary: content.summary || item.summary || '',
+      story: (museumId === 'national' && window.STORY_OVERRIDES && window.STORY_OVERRIDES[item.n]) || content.story || '',
       duration: content.duration || 3,
       image: item.img || '',
-      imageCredit: item.img ? '中国国家博物馆官网' : ''
+      imageCredit: item.img ? (catalog.name || museumConfig(museumId).name) + '官网' : ''
     });
   }
   function editorModal() {
@@ -1091,7 +1217,7 @@
               '<div class="field"><label for="f-alias">又名 / 别名</label><input id="f-alias" name="alias" class="input" value="' + esc(a.alias) + '" placeholder="司母戊鼎、后母戊鼎……"></div>' +
             '</div>' +
             '<div class="field-row">' +
-              '<div class="field"><label for="f-gallery">所属单元 *</label><select id="f-gallery" name="galleryId" class="select">' + state.data.galleries.map((g) => '<option value="' + esc(g.id) + '" ' + (g.id === a.galleryId ? 'selected' : '') + '>' + esc(g.name) + '</option>').join('') + '</select></div>' +
+              '<div class="field"><label for="f-gallery">所属单元 *</label><select id="f-gallery" name="galleryId" class="select">' + museumGalleries(a.museumId).map((g) => '<option value="' + esc(g.id) + '" ' + (g.id === a.galleryId ? 'selected' : '') + '>' + esc(g.name) + '</option>').join('') + '</select></div>' +
               '<div class="field"><label for="f-era">年代</label><input id="f-era" name="era" class="input" value="' + esc(a.era) + '" placeholder="商后期 / 约公元前14—前11世纪"></div>' +
             '</div>' +
             '<div class="field-row tight">' +
@@ -1265,14 +1391,16 @@
     q.loadingText = '正在识别可能的文物……';
     renderModal();
     try {
+      const museum = currentMuseum();
       const system = [
-        '你是中国国家博物馆“古代中国”基本陈列的文物识别助手。',
+        '你是' + museum.name + (museum.id === 'capital' ? '“馆藏精品”' : '“古代中国”基本陈列') + '的文物识别助手。',
+        museum.id === 'capital' ? '只考虑首都博物馆的藏品，不要推荐中国国家博物馆的藏品。' : '只考虑中国国家博物馆“古代中国”陈列的藏品。',
         '根据用户给的名字或近似名，返回最多 3 个可能文物，按可能性排序。',
         '只返回 JSON：{"candidates":[{"name":"正式名称","era":"年代","material":"材质","category":"类别","museum":"馆藏","note":"一句判断依据","confidence":"high|medium|low"}]}。',
         '不要编造精确尺寸、重量和出土地；没有把握的字段写“未知”。',
         '不要返回图片，不要返回链接，不要解释。'
       ].join('\n');
-      const user = '用户输入：' + name + '\n当前单元：' + galleryName(q.galleryId) + '\n请给出最可能的候选。';
+      const user = '用户输入：' + name + '\n博物馆：' + museum.name + '\n当前单元：' + galleryName(q.galleryId) + '\n请给出最可能的候选。';
       const content = await chatCompletion([{ role: 'system', content: system }, { role: 'user', content: user }], 900);
       const candidates = quickParseCandidates(content);
       q.candidates = candidates;
@@ -1293,6 +1421,7 @@
     const a = c.item ? artifactFromCatalog(c.item, q.galleryId) : newArtifactBase(q.galleryId);
     a.id = uid('a-');
     a.galleryId = q.galleryId;
+    a.museumId = state.ui.museumId;
     a.name = c.name || a.name;
     a.era = a.era || c.era || '';
     a.material = a.material || c.material || '';
@@ -1457,14 +1586,15 @@
   }
   function galleriesModal() {
     const m = state.ui.manager;
-    const rows = state.data.galleries.map((g, i) => {
+    const scoped = museumGalleries();
+    const rows = scoped.map((g, i) => {
       const count = galleryArtifacts(g.id).length;
       return '<div class="manager-row">' +
         '<span class="manager-swatch" style="background:' + colorSafe(g.color) + '"></span>' +
         '<span class="manager-info"><strong>' + esc(g.name) + '</strong><span>' + esc(g.period || '未填年代') + ' · ' + count + ' 件</span></span>' +
         '<span class="manager-tools">' +
           '<button type="button" data-action="gallery-move" data-id="' + esc(g.id) + '" data-dir="-1" aria-label="上移" ' + (i === 0 ? 'disabled' : '') + '>↑</button>' +
-          '<button type="button" data-action="gallery-move" data-id="' + esc(g.id) + '" data-dir="1" aria-label="下移" ' + (i === state.data.galleries.length - 1 ? 'disabled' : '') + '>↓</button>' +
+          '<button type="button" data-action="gallery-move" data-id="' + esc(g.id) + '" data-dir="1" aria-label="下移" ' + (i === scoped.length - 1 ? 'disabled' : '') + '>↓</button>' +
           '<button type="button" data-action="gallery-edit" data-id="' + esc(g.id) + '" aria-label="编辑">' + icon('edit') + '</button>' +
           '<button type="button" data-action="gallery-delete" data-id="' + esc(g.id) + '" aria-label="删除">' + icon('trash') + '</button>' +
         '</span>' +
@@ -1484,7 +1614,7 @@
       '</form>';
     }
     return '<div class="modal-backdrop" data-action="modal-backdrop"><div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="galleries-title">' +
-      '<div class="modal-head"><div><p class="kicker">目录</p><h2 id="galleries-title">管理单元</h2><p>第一层目录可以随时增加，比如专题展、临展，或你自己的讲解路线。</p></div><button class="icon-btn close" data-action="close-modal" aria-label="关闭">' + icon('close') + '</button></div>' +
+      '<div class="modal-head"><div><p class="kicker">' + esc(currentMuseum().name) + '</p><h2 id="galleries-title">管理单元</h2><p>第一层目录可以随时增加，比如专题展、临展，或你自己的讲解路线。</p></div><button class="icon-btn close" data-action="close-modal" aria-label="关闭">' + icon('close') + '</button></div>' +
       '<div class="modal-body">' +
         '<div class="manager-list">' + rows + '</div>' +
         '<button class="btn btn-ghost btn-sm" type="button" data-action="gallery-new">' + icon('plus') + '新增单元</button>' +
@@ -1563,8 +1693,12 @@
     const modeText = mode === 'summary' ? '只重写“一句话简介”，保留现有讲解故事。'
       : mode === 'story' ? '保留现有“一句话简介”，只重写讲解故事。'
       : '完整起草：一句话简介和一段讲解故事。';
+    const mid = museumOfArtifact(a);
+    const museum = museumConfig(mid);
+    const collection = mid === 'capital' ? '馆藏精品' : '古代中国';
     const system = [
-      '你是中国国家博物馆“古代中国”基本陈列的资深讲解员，负责把文物资料写成可以直接照着讲的生动故事。',
+      '你是' + museum.name + '“' + collection + '”的资深讲解员，负责把文物资料写成可以直接照着讲的生动故事。',
+      ...(mid === 'capital' ? ['这是一件首都博物馆藏品，不是中国国家博物馆；不要写成国博，也不要套用“古代中国”的单元叙事。'] : []),
       '必须遵守：',
       '1. 只输出一个 JSON 对象，不要 Markdown 代码块，不要任何解释文字。',
       '2. story 是直接讲给观众听的一段叙述，不是讲解技巧或教学提示。不要出现“先别急着看”“你可以”“注意看”“带大家”“我们来看”“接下来”“我讲的时候”这类提示、动作或教学口吻；不要用括号写舞台提示（例如“（指向器腹）”）。直接讲文物本身、历史现场和小故事。',
@@ -1577,6 +1711,7 @@
     const existing = [
       '名称：' + a.name,
       '又名：' + (a.alias || '无'),
+      '博物馆：' + museum.name,
       '单元：' + galleryName(a.galleryId),
       '年代：' + (a.era || a.date || '未填'),
       '材质：' + (a.material || '未填'),
@@ -1584,7 +1719,7 @@
       '尺寸：' + (a.size || '未填'),
       '重量：' + (a.weight || '未填'),
       '出土/来源：' + (a.unearthed || '未填'),
-      '馆藏/场馆：' + (a.museum || '中国国家博物馆'),
+      '馆藏/场馆：' + (a.museum || museum.name),
       '现有简介：' + (a.summary || '无'),
       '现有讲解故事：' + (storyText(a) || '无'),
       '讲解员补充：' + (instruction || '无')
@@ -1976,6 +2111,17 @@
         toast('底色：' + (found ? found.name : theme));
         return;
       }
+      if (action === 'switch-museum') {
+        e.preventDefault();
+        const id = el.getAttribute('data-museum');
+        if (!MUSEUMS[id] || id === state.ui.museumId) return;
+        applyMuseum(id, true);
+        state.ui.review = { galleryId: 'all', artifactId: null, revealed: false, count: 0 };
+        closeModal();
+        navigate('#/');
+        toast('已切换到' + MUSEUMS[id].name);
+        return;
+      }
       if (action === 'toggle-sort') {
         e.preventDefault();
         const next = !state.ui.sortMode;
@@ -2222,10 +2368,14 @@
       if (action === 'gallery-move') {
         const id = el.getAttribute('data-id');
         const dir = Number(el.getAttribute('data-dir'));
+        const scoped = museumGalleries();
+        const pos = scoped.findIndex((g) => g.id === id);
+        const other = scoped[pos + dir];
+        if (!other) return;
         const arr = state.data.galleries;
         const idx = arr.findIndex((g) => g.id === id);
-        const j = idx + dir;
-        if (idx >= 0 && j >= 0 && j < arr.length) {
+        const j = arr.findIndex((g) => g.id === other.id);
+        if (idx >= 0 && j >= 0) {
           const t = arr[idx]; arr[idx] = arr[j]; arr[j] = t;
           scheduleSave();
           renderModal();
@@ -2546,6 +2696,8 @@
     };
     delete artifact.status;
     const idx = state.data.artifacts.findIndex((a) => a.id === artifact.id);
+    artifact.museumId = museumOfGallery(findGallery(galleryId)) || state.ui.museumId;
+    artifact.museum = museumConfig(artifact.museumId).name;
     if (idx >= 0) state.data.artifacts[idx] = artifact;
     else state.data.artifacts.push(artifact);
     scheduleSave();
@@ -2578,11 +2730,12 @@
       color: colorSafe(String(fd.get('color') || '#8a6a4f'))
     };
     if (m.editing === 'new') {
-      state.data.galleries.push({ id: uid('g-'), ...data });
+      state.data.galleries.push({ id: uid('g-'), ...data, museumId: state.ui.museumId });
     } else {
       const g = findGallery(m.editing);
       if (!g) return;
       Object.assign(g, data);
+      g.museumId = museumOfGallery(g);
     }
     state.ui.manager = { editing: null, form: null };
     scheduleSave();
@@ -2593,7 +2746,8 @@
 
   /* ---------------- init ---------------- */
   function showBoot() {
-    document.getElementById('app').innerHTML = '<div style="min-height:100vh;display:grid;place-items:center;color:var(--muted);font-size:13px"><div style="text-align:center"><div style="width:44px;height:44px;margin:0 auto 14px;border-radius:8px;background:var(--cinnabar);color:#fff8ea;display:grid;place-items:center;font-family:var(--serif);font-size:24px">国</div>正在打开手册……</div></div>';
+    const museum = currentMuseum();
+    document.getElementById('app').innerHTML = '<div style="min-height:100vh;display:grid;place-items:center;color:var(--muted);font-size:13px"><div style="text-align:center"><div style="width:44px;height:44px;margin:0 auto 14px;border-radius:8px;background:var(--cinnabar);color:#fff8ea;display:grid;place-items:center;font-family:var(--serif);font-size:24px">' + esc(museum.seal) + '</div>正在打开' + esc(museum.title) + '……</div></div>';
   }
   async function init() {
     applyTheme(currentTheme(), false);

@@ -116,6 +116,101 @@ html[data-theme="slate"] {
   --shadow-lg: 0 28px 80px -36px rgba(0, 0, 0, 0.9);
 }
 
+/* 首博：青绿 / 石绿，和国博的暖红纸色区分 */
+html[data-museum="capital"] {
+  --canvas-1: #edf2ed;
+  --canvas-2: #e7eee8;
+  --canvas-3: #dfe8e1;
+  --canvas-glow-1: rgba(250, 252, 247, 0.92);
+  --canvas-glow-2: rgba(127, 162, 148, 0.22);
+  --header-bg: rgba(237, 242, 237, 0.88);
+  --paper: #eef2ed;
+  --paper-soft: #f8faf6;
+  --card: #fbfdf9;
+  --card-2: #eef4ef;
+  --cinnabar: #2f6b63;
+  --cinnabar-deep: #24534d;
+  --cinnabar-soft: rgba(47, 107, 99, 0.09);
+  --gold: #a1874e;
+  --jade: #4f7068;
+  --line: rgba(43, 76, 68, 0.14);
+  --line-strong: rgba(43, 76, 68, 0.25);
+  --hover: rgba(43, 76, 68, 0.06);
+}
+html[data-museum="capital"][data-theme="white"] {
+  --canvas-1: #f4f8f4;
+  --canvas-2: #eef4ef;
+  --canvas-3: #e7efe9;
+  --canvas-glow-1: rgba(255, 255, 255, 0.95);
+  --canvas-glow-2: rgba(127, 162, 148, 0.18);
+  --header-bg: rgba(248, 251, 247, 0.9);
+  --paper: #f3f7f2;
+  --paper-soft: #ffffff;
+  --card: #ffffff;
+  --card-2: #eff5f0;
+}
+html[data-museum="capital"][data-theme="ink"] {
+  color-scheme: dark;
+  --canvas-1: #111917;
+  --canvas-2: #16211d;
+  --canvas-3: #1b2924;
+  --canvas-glow-1: rgba(61, 102, 86, 0.24);
+  --canvas-glow-2: rgba(17, 37, 30, 0.46);
+  --paper: #18231f;
+  --paper-soft: #1e2c26;
+  --card: #25362f;
+  --card-2: #2b3f36;
+  --ink: #e9f1eb;
+  --ink-2: #cbdcd1;
+  --muted: #a3b9ad;
+  --faint: #7f988b;
+  --line: rgba(233, 241, 235, 0.14);
+  --line-strong: rgba(233, 241, 235, 0.28);
+  --cinnabar: #7fb3a1;
+  --cinnabar-deep: #9cc9b8;
+  --cinnabar-soft: rgba(127, 179, 161, 0.15);
+  --gold: #c4a76b;
+  --jade: #8fb0a0;
+  --header-bg: rgba(17, 25, 23, 0.9);
+  --hover: rgba(255, 255, 255, 0.07);
+}
+html[data-museum="capital"][data-theme="slate"] {
+  --canvas-1: #121c1b;
+  --canvas-2: #172523;
+  --canvas-3: #1c2d2a;
+  --canvas-glow-1: rgba(65, 105, 95, 0.25);
+  --canvas-glow-2: rgba(18, 42, 38, 0.45);
+  --paper: #192522;
+  --paper-soft: #1f2e2a;
+  --card: #263a34;
+  --card-2: #2c433b;
+  --ink: #edf4f1;
+  --ink-2: #d0dfd9;
+  --muted: #a5bab2;
+  --faint: #81988f;
+  --line: rgba(237, 244, 241, 0.14);
+  --line-strong: rgba(237, 244, 241, 0.28);
+  --cinnabar: #8fbcb0;
+  --cinnabar-deep: #a7d0c4;
+  --cinnabar-soft: rgba(143, 188, 176, 0.15);
+  --gold: #c4a76b;
+  --jade: #8fb0a6;
+  --header-bg: rgba(18, 28, 27, 0.9);
+  --hover: rgba(255, 255, 255, 0.07);
+}
+html[data-museum="capital"] .paper-grain {
+  opacity: 0.14;
+  background-image:
+    repeating-linear-gradient(45deg, rgba(47, 107, 99, 0.12) 0 1px, transparent 1px 11px),
+    repeating-linear-gradient(-45deg, rgba(47, 107, 99, 0.08) 0 1px, transparent 1px 11px);
+  mix-blend-mode: multiply;
+}
+html[data-museum="capital"][data-theme="ink"] .paper-grain,
+html[data-museum="capital"][data-theme="slate"] .paper-grain {
+  opacity: 0.1;
+  mix-blend-mode: screen;
+}
+
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 body {
@@ -245,6 +340,32 @@ code, .mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monosp
   letter-spacing: 0.12em;
   white-space: nowrap;
 }
+.museum-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 4px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--card) 58%, transparent);
+  vertical-align: middle;
+}
+.museum-switch button {
+  min-height: 18px;
+  padding: 1px 7px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+}
+.museum-switch button.active { background: var(--cinnabar); color: #fff8ea; }
+.museum-switch button:hover { color: var(--ink); }
+.museum-switch button.active:hover { color: #fff8ea; }
 .header-spacer { flex: 1; }
 .top-nav { display: flex; align-items: center; gap: 4px; }
 .top-nav a {

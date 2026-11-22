@@ -219,6 +219,27 @@ await waitFor(`document.querySelectorAll(".artifact-row").length === ${rowsBefor
 check('三秒撤销恢复', await evaluate('document.querySelectorAll(".artifact-row").length') === rowsBeforeDelete);
 check('长按菜单被拦截', await evaluate('(function(){var row=document.querySelector(".artifact-row"); var e=new MouseEvent("contextmenu",{bubbles:true,cancelable:true}); row.dispatchEvent(e); return e.defaultPrevented;})()'));
 
+await evaluate('document.querySelector("[data-museum=capital]").click()');
+await waitFor('document.documentElement.dataset.museum === "capital"');
+check('切换到首博', await evaluate('document.querySelectorAll(".era-row").length === 11 && document.body.innerText.includes("首都博物馆")'));
+await evaluate('document.querySelector(".era-row").click()');
+await waitFor('document.querySelector(".gallery-hero h1").innerText === "青铜器"');
+await evaluate('document.querySelector("[data-action=add-artifact]").click()');
+await waitFor('!!document.querySelector("#catalog-search")');
+await evaluate('document.querySelector("[data-action=catalog-scope][data-scope=all]").click()');
+await waitFor('document.querySelectorAll(".catalog-row").length === 81');
+check('首博名录 81 件', await evaluate('document.querySelector("#picker-title").innerText.includes("首博") && document.querySelectorAll(".catalog-row").length === 81'));
+check('首博图片已带', await evaluate('document.querySelector(".catalog-thumb img").src.includes("assets/capital/")'));
+await evaluate('document.querySelector(".catalog-row").click()');
+await waitFor('!!document.querySelector("#f-name")');
+check('首博条目自动填表', await evaluate('document.querySelector("#f-name").value === "伯矩鬲" && document.querySelector("#f-era").value.length > 0'));
+check('首博条目图片路径', await evaluate('document.querySelector("#f-image").value.includes("assets/capital/")'));
+await evaluate('document.querySelector("[data-action=close-modal]").click()');
+await sleep(250);
+await evaluate('document.querySelector(".museum-switch [data-museum=national]").click()');
+await waitFor('document.documentElement.dataset.museum === "national" && document.querySelectorAll(".era-row").length === 9');
+check('切回国博', await evaluate('document.querySelectorAll(".era-row").length === 9'));
+
 const saved = await evaluate('JSON.stringify({len: (localStorage.getItem("guobo-guide-v1")||"").length})');
 console.log('DATA', saved);
 if (errors.length) console.log('JS ERRORS', errors.slice(0, 5));
