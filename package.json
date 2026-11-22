@@ -1,6 +1,6 @@
 {
   "name": "guobo-guide",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "description": "国博「古代中国」讲解员的随身手册：三级目录、AI 起草、讲解模式、复习与离线备份。",

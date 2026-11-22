@@ -45,7 +45,7 @@ check('无横向溢出', await ev('document.documentElement.scrollWidth <= inner
 check('底部导航显示', await ev('getComputedStyle(document.querySelector(".bottom-nav")).display !== "none"'));
 check('搜索框 16px 防缩放', (await ev('getComputedStyle(document.querySelector(".search-box input")).fontSize')) === '16px');
 check('Service Worker 已注册', await ev('navigator.serviceWorker.ready.then((r) => !!r.active)'));
-check('离线缓存版本 v25', await ev('caches.keys().then((keys) => keys.includes("guobo-guide-v25"))'));
+check('离线缓存版本 v26', await ev('caches.keys().then((keys) => keys.includes("guobo-guide-v26"))'));
 
 await ev('document.querySelector(".era-row").click()');
 await waitFor('!!document.querySelector(".artifact-row")');
@@ -130,7 +130,7 @@ check('折叠屏 800 宽仍分栏', await ev('!!document.querySelector(".split-l
 
 await ev('document.querySelector("[data-museum=capital]").click()');
 await waitFor('document.documentElement.dataset.museum === "capital"');
-check('手机切换首博', await ev('document.querySelectorAll(".era-row").length === 11'));
+check('手机切换首博', await ev('document.querySelectorAll(".era-row").length === 6'));
 await ev('document.querySelector("[data-museum=national]").click()');
 await waitFor('document.documentElement.dataset.museum === "national"');
 

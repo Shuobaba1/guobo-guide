@@ -21,7 +21,7 @@
 - `app.js`：路由、渲染、状态、IndexedDB、AI、PWA 交互，全部在一个 IIFE 里。
 - `seed.js`：8 个单元、13 件示例文物，`window.SEED_DATA`。
 - `catalog.js`：321 件国博「古代中国」官网重点展品名录（含缩略图路径），`window.CATALOG_DATA`；由 `tools/build-catalog.mjs` 生成，不要手改。缩略图在 `assets/catalog/`。
-- `capital-catalog.js`：81 件首博「馆藏精品」名录，`window.CAPITAL_CATALOG`；含 11 个门类和图片路径，图片在 `assets/capital/`。
+- `capital-catalog.js`：81 件首博「馆藏精品」名录，`window.CAPITAL_CATALOG`；按 6 个时间单元归档，图片在 `assets/capital/`。
 - `content.js`：已备稿的简介、讲解故事和补充字段，`window.CONTENT_DATA`；key 为 `galleryId|名录名称`，可手工追加或由 Harness 批量生成。
 - `server.mjs`：静态服务器 + `POST /api/ai` 代理，零依赖；会读取同目录 `.env` 里的 `DEEPSEEK_API_KEY`。
 - AI 默认由浏览器直连 DeepSeek 官方；`server.mjs` 的 `/api/ai` 代理和 `.env` 仅作为公网部署时的可选方案。
@@ -55,7 +55,7 @@ UI 自动化测试需要：本地服务运行在 4173、Chrome 以 `--remote-deb
 4. **图片版权**：`assets/seed`、`assets/catalog` 来自国博官网，`assets/capital` 来自首博官网，仅限个人学习；新增图片要注明来源，公开 / 商用需授权。
 5. **示例内容**：都是草稿，不把推测写成定论；不确定的写「（待核对）」。
 6. **移动端验收已开始**：iPhone 390×844、横屏 844×390，华为折叠屏 800 宽；桌面 1280 / 1440 继续跑。Chromium 模拟不能替代真机 Safari / 华为浏览器，真机结果单独记。
-7. **发布三件套**：改完跑语法检查 → 跑 54 项桌面 UI 测试 + 37 项手机视口测试 → 重建 `dist`，并在 `CHANGELOG.md` 记一笔。
+7. **发布三件套**：改完跑语法检查 → 跑 55 项桌面 UI 测试 + 37 项手机视口测试 → 重建 `dist`，并在 `CHANGELOG.md` 记一笔。
 
 ## 目录约定
 
@@ -89,7 +89,7 @@ release/                           对外压缩包
 - 名录只覆盖国博官网 8 个单元页列出的 321 条重点展品，不是展出的 2026 件全量；未列条目仍可手动新增。
 - 名录缩略图来自国博官网，仅个人学习；大盂鼎、虢季子白盘暂无缩略图，列表用文字占位。
 - 名录图大部分是 185px 展览缩略图，只适合列表；远古前三件已换成 1000px 高清图。
-- 首博 81 件来自官网馆藏精品接口，均为带图条目；11 个门类按官网分类，不是首博全部馆藏。
+- 首博 81 件来自官网馆藏精品接口，均为带图条目；按 6 个时间单元（史前 · 商周 / 秦汉魏晋南北朝 / 辽宋金元 / 明 / 清 / 近现代）归档，不按官网门类，也不是首博全部馆藏。
 
 ## 下一步优先级
 

@@ -1,4 +1,4 @@
-# 用 GitHub Pages 上线（1.0.0）
+# 用 GitHub Pages 上线（1.1.0）
 
 目标：把项目发布成一个公开的 GitHub 仓库，用 GitHub Pages 提供 HTTPS 地址，然后在 iPhone Safari 里“添加到主屏幕”。装好之后电脑可以关机，日常在国博离线使用。
 
@@ -34,7 +34,7 @@
 
 1. 左侧 **Changes** 会列出所有文件；
 2. 确认列表里**没有 `.env`**；
-3. 底部 Summary 填：`v1.0.0 国博 + 首博双馆正式版`；
+3. 底部 Summary 填：`v1.1.0 首博改为六段时间线`；
 4. 点 **Commit to main**。
 
 ## 4. 发布到 GitHub
@@ -86,14 +86,14 @@ https://你的用户名.github.io/guobo-guide/
 3. GitHub Pages 会自动重新发布；
 4. iPhone 上把 App 关掉重开，或刷新两次，让新的 service worker 生效。
 
-如果改了前端资源，记得把 `sw.js` 的 `CACHE` 版本号 +1；当前是 `guobo-guide-v25`。
+如果改了前端资源，记得把 `sw.js` 的 `CACHE` 版本号 +1；当前是 `guobo-guide-v26`。
 
-## 8. 打一个 v1.0.0 Release（可选）
+## 8. 打一个 v1.1.0 Release（可选）
 
 1. 仓库首页 → 右侧 **Releases → Create a new release**；
-2. Tag：`v1.0.0`；
-3. Title：`1.0.0 国博 + 首博正式版`；
-4. 上传 `release/国博讲解手册-原型-v1.0.0.zip`；
+2. Tag：`v1.1.0`；
+3. Title：`1.1.0 首博六段时间线`；
+4. 上传 `release/国博讲解手册-原型-v1.1.0.zip`；
 5. Publish release。
 
 ## 常见问题

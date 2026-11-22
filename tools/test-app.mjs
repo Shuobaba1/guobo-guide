@@ -221,9 +221,10 @@ check('长按菜单被拦截', await evaluate('(function(){var row=document.quer
 
 await evaluate('document.querySelector("[data-museum=capital]").click()');
 await waitFor('document.documentElement.dataset.museum === "capital"');
-check('切换到首博', await evaluate('document.querySelectorAll(".era-row").length === 11 && document.body.innerText.includes("首都博物馆")'));
+check('切换到首博', await evaluate('document.querySelectorAll(".era-row").length === 6 && document.body.innerText.includes("首都博物馆")'));
+check('首博按时间分 6 单元', await evaluate('document.body.innerText.includes("秦汉魏晋南北朝") && document.body.innerText.includes("辽宋金元") && document.body.innerText.includes("近现代")'));
 await evaluate('document.querySelector(".era-row").click()');
-await waitFor('document.querySelector(".gallery-hero h1").innerText === "青铜器"');
+await waitFor('document.querySelector(".gallery-hero h1").innerText === "史前 · 商周"');
 await evaluate('document.querySelector("[data-action=add-artifact]").click()');
 await waitFor('!!document.querySelector("#catalog-search")');
 await evaluate('document.querySelector("[data-action=catalog-scope][data-scope=all]").click()');

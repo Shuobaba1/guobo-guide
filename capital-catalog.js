@@ -1,4 +1,4 @@
-/* 首都博物馆「馆藏精品」名录（81 件带图）
+/* 首都博物馆「馆藏精品」名录（81 件带图，6 个时间单元）
  * 数据来自首都博物馆官网馆藏精品栏目；图片版权归原权利人所有，仅限个人学习。
  */
 window.CAPITAL_CATALOG = {
@@ -6,99 +6,72 @@ window.CAPITAL_CATALOG = {
   "name": "首都博物馆",
   "shortName": "首博",
   "source": "https://www.capitalmuseum.org.cn/collection",
+  "legacyIds": [
+    "c-bronze",
+    "c-ceramic",
+    "c-gold",
+    "c-painting",
+    "c-calligraphy",
+    "c-curio",
+    "c-buddha",
+    "c-textile",
+    "c-jade",
+    "c-coin",
+    "c-other"
+  ],
   "units": [
     {
-      "id": "c-bronze",
-      "name": "青铜器",
-      "period": "馆藏分类",
-      "description": "北京地区出土与馆藏青铜器，从琉璃河燕国墓地到明清铜炉。",
-      "color": "#52654f",
-      "museumId": "capital"
-    },
-    {
-      "id": "c-ceramic",
-      "name": "陶瓷器",
-      "period": "馆藏分类",
-      "description": "从新石器时代陶器到景德镇青花，北京城出土与旧藏的陶瓷。",
+      "id": "c-prehistory-shangzhou",
+      "name": "史前 · 商周",
+      "period": "约70万年前—前221年",
+      "description": "从“北京人”头盖骨、新石器时代陶器，到琉璃河燕国青铜器与春秋战国的金饰，北京早期历史在这里起步。",
       "color": "#8a6a4f",
       "museumId": "capital"
     },
     {
-      "id": "c-gold",
-      "name": "金银器",
-      "period": "馆藏分类",
-      "description": "金器、银器与镶嵌工艺，见证辽金元明清的奢华与交流。",
-      "color": "#a17d43",
+      "id": "c-qin-han-wei-jin",
+      "name": "秦汉魏晋南北朝",
+      "period": "前221—589年",
+      "description": "秦汉大一统、魏晋南北朝的民族融合，北京地区早期城市、墓葬与生活器物的见证。",
+      "color": "#9b4530",
       "museumId": "capital"
     },
     {
-      "id": "c-painting",
-      "name": "绘画",
-      "period": "馆藏分类",
-      "description": "馆藏书画中的山水、人物与花鸟，呈现北京地区的艺术收藏。",
-      "color": "#5b7180",
-      "museumId": "capital"
-    },
-    {
-      "id": "c-calligraphy",
-      "name": "书法",
-      "period": "馆藏分类",
-      "description": "馆藏书法与法书，见于卷轴、册页和碑帖。",
-      "color": "#6b5a4a",
-      "museumId": "capital"
-    },
-    {
-      "id": "c-curio",
-      "name": "文玩",
-      "period": "馆藏分类",
-      "description": "文房、铜炉、漆器等案头清玩，见出明清文人的生活趣味。",
-      "color": "#7d6a55",
-      "museumId": "capital"
-    },
-    {
-      "id": "c-buddha",
-      "name": "佛造像",
-      "period": "馆藏分类",
-      "description": "汉传与藏传佛教造像，展现北京作为信仰中心的多元面貌。",
-      "color": "#8a6a4f",
-      "museumId": "capital"
-    },
-    {
-      "id": "c-textile",
-      "name": "织绣",
-      "period": "馆藏分类",
-      "description": "宫廷与民间的织锦、刺绣和服饰，保存了精湛的丝线工艺。",
-      "color": "#8b3f4a",
-      "museumId": "capital"
-    },
-    {
-      "id": "c-jade",
-      "name": "玉器",
-      "period": "馆藏分类",
-      "description": "从史前玉礼器到明清玉佩，玉在中国文化中的长久生命。",
+      "id": "c-liao-song-jin-yuan",
+      "name": "辽宋金元",
+      "period": "907—1368年",
+      "description": "辽金升为陪都，元大都成为全国都城；陶瓷、金银器、书画与佛教艺术汇成一座都城的底色。",
       "color": "#4f7068",
       "museumId": "capital"
     },
     {
-      "id": "c-coin",
-      "name": "钱币",
-      "period": "馆藏分类",
-      "description": "北京地区出土与馆藏钱币，串起贸易、财政与城市生活。",
-      "color": "#7a6a4d",
+      "id": "c-ming",
+      "name": "明",
+      "period": "1368—1644年",
+      "description": "明代北京成为帝国首都，宫殿、坛庙、瓷器、金银器与书画共同塑造京城气象。",
+      "color": "#7d5b3f",
       "museumId": "capital"
     },
     {
-      "id": "c-other",
-      "name": "其他",
-      "period": "馆藏分类",
-      "description": "不属于以上门类，但同样有故事的馆藏文物。",
-      "color": "#6b6b63",
+      "id": "c-qing",
+      "name": "清",
+      "period": "1644—1911年",
+      "description": "清代北京的多民族交往与宫廷工艺，玉器、织绣、书画和陶瓷精品集中呈现。",
+      "color": "#8b3f4a",
+      "museumId": "capital"
+    },
+    {
+      "id": "c-modern",
+      "name": "近现代",
+      "period": "1912年至今",
+      "description": "民国以来的北京城市记忆：折扇、手稿、票证与生活物件，记录一座城市的近代转身。",
+      "color": "#5b7180",
       "museumId": "capital"
     }
   ],
   "items": [
     {
-      "g": "c-bronze",
+      "g": "c-prehistory-shangzhou",
       "n": "伯矩鬲",
       "a": "",
       "e": "西周早期（公元前1046-前922年）",
@@ -113,7 +86,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-bronze",
+      "g": "c-prehistory-shangzhou",
       "n": "堇鼎",
       "a": "",
       "e": "西周早期（公元前1046-前922年）",
@@ -128,7 +101,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-bronze",
+      "g": "c-prehistory-shangzhou",
       "n": "克罍",
       "a": "",
       "e": "西周早期（公元前1046-前922年）",
@@ -143,7 +116,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-bronze",
+      "g": "c-ming",
       "n": "宣德款铜炉",
       "a": "",
       "e": "明代·宣德（1426-1435）",
@@ -158,7 +131,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-ceramic",
+      "g": "c-prehistory-shangzhou",
       "n": "筒形罐",
       "a": "",
       "e": "新石器时代中期（距今约7200-7000年）",
@@ -173,7 +146,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-ceramic",
+      "g": "c-prehistory-shangzhou",
       "n": "绳纹陶鬲",
       "a": "",
       "e": "战国时期（公元前475-前221年）",
@@ -188,7 +161,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-ceramic",
+      "g": "c-liao-song-jin-yuan",
       "n": "灰陶契丹人俑",
       "a": "",
       "e": "辽代（907-1125）",
@@ -203,7 +176,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-ceramic",
+      "g": "c-liao-song-jin-yuan",
       "n": "越窑青釉划花宴乐人物纹执壶",
       "a": "",
       "e": "辽代（907-1125）",
@@ -218,7 +191,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-ceramic",
+      "g": "c-liao-song-jin-yuan",
       "n": "定窑白釉提梁壶",
       "a": "",
       "e": "宋代（960-1279）",
@@ -233,7 +206,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-ceramic",
+      "g": "c-liao-song-jin-yuan",
       "n": "黄釉马蹬壶",
       "a": "",
       "e": "辽代（907-1125） ",
@@ -248,7 +221,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-ceramic",
+      "g": "c-liao-song-jin-yuan",
       "n": "白釉黑彩“内府”铭梅瓶",
       "a": "",
       "e": "元代（1271-1368）",
@@ -263,7 +236,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-ceramic",
+      "g": "c-liao-song-jin-yuan",
       "n": "景德镇窑青白釉戏剧舞台人物纹枕",
       "a": "",
       "e": "元代（1271-1368）",
@@ -278,7 +251,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-ceramic",
+      "g": "c-liao-song-jin-yuan",
       "n": "磁州窑白地黑花龙纹四系扁壶",
       "a": "",
       "e": "元代（1271-1368）",
@@ -293,7 +266,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-ceramic",
+      "g": "c-liao-song-jin-yuan",
       "n": "景德镇窑青花凤首扁壶",
       "a": "",
       "e": "元代（1271-1368）",
@@ -308,7 +281,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-ceramic",
+      "g": "c-qing",
       "n": "景德镇窑青花缠枝牡丹纹盖罐",
       "a": "",
       "e": "清代·康熙（1662-1722）",
@@ -323,7 +296,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-ceramic",
+      "g": "c-ming",
       "n": "景德镇窑青花踏雪寻梅图罐",
       "a": "",
       "e": "明代·天顺（1457-1464）",
@@ -338,7 +311,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-ceramic",
+      "g": "c-ming",
       "n": "万历款景德镇窑青花缠枝番莲纹梅瓶",
       "a": "",
       "e": "明代·万历（1573-1620）",
@@ -353,7 +326,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-ceramic",
+      "g": "c-ming",
       "n": "嘉靖款景德镇窑青花红彩鱼藻纹盖罐",
       "a": "",
       "e": "明代·嘉靖（1522-1566）",
@@ -368,7 +341,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-gold",
+      "g": "c-liao-song-jin-yuan",
       "n": "鎏金银面具",
       "a": "",
       "e": "辽代（907-1125）",
@@ -383,7 +356,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-gold",
+      "g": "c-prehistory-shangzhou",
       "n": "虎形金牌饰",
       "a": "",
       "e": "春秋早中期（公元前770-前550年）",
@@ -398,7 +371,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-gold",
+      "g": "c-qin-han-wei-jin",
       "n": "蝉纹金珰",
       "a": "",
       "e": "北朝（386-581）",
@@ -413,7 +386,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-gold",
+      "g": "c-prehistory-shangzhou",
       "n": "金臂钏（一对）",
       "a": "",
       "e": "商晚期（公元前1300-前1046年）",
@@ -428,7 +401,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-gold",
+      "g": "c-liao-song-jin-yuan",
       "n": "金丝凤冠、凤鸟纹玉饰件",
       "a": "",
       "e": "金代（1115-1234）",
@@ -443,7 +416,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-gold",
+      "g": "c-ming",
       "n": "累丝嵌石镶玉龙凤八卦金杯",
       "a": "",
       "e": "明代（1368-1644）",
@@ -458,7 +431,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-gold",
+      "g": "c-ming",
       "n": "宣德款云凤纹摇铃金尊",
       "a": "",
       "e": "明代·宣德九年(1434)",
@@ -473,7 +446,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-gold",
+      "g": "c-ming",
       "n": "永乐款金凤簪",
       "a": "",
       "e": "明代·永乐二十二年（1424）",
@@ -488,7 +461,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-gold",
+      "g": "c-ming",
       "n": "錾花金什件",
       "a": "",
       "e": "明代（1368-1644）",
@@ -503,7 +476,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-gold",
+      "g": "c-ming",
       "n": "錾花山水人物金八方盘",
       "a": "",
       "e": "明代（1368-1644）",
@@ -518,7 +491,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-gold",
+      "g": "c-qing",
       "n": "錾花钱纹金指甲套",
       "a": "",
       "e": "清代（1644-1911）",
@@ -533,7 +506,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-gold",
+      "g": "c-qing",
       "n": "累丝嵌宝石荷舟游人金饰件",
       "a": "",
       "e": "清代(1644-1911)",
@@ -548,7 +521,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-gold",
+      "g": "c-qing",
       "n": "“丙申重阳”款金葫芦",
       "a": "",
       "e": "清代(1644-1911)",
@@ -563,7 +536,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-gold",
+      "g": "c-qing",
       "n": "累丝“吴牛喘月”金钗",
       "a": "",
       "e": "清代（1644-1911）",
@@ -578,7 +551,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-gold",
+      "g": "c-ming",
       "n": "永乐款云南闸办银课五十两银锭",
       "a": "",
       "e": "明代·永乐十八年（1420）",
@@ -593,7 +566,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-painting",
+      "g": "c-qing",
       "n": "温肇江《江亭展禊图》卷",
       "a": "",
       "e": "清代（1836）",
@@ -608,7 +581,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-painting",
+      "g": "c-ming",
       "n": "\"金鳌玉蝀\"桥石额",
       "a": "",
       "e": "明代·嘉靖（1522-1566）",
@@ -623,7 +596,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-painting",
+      "g": "c-qing",
       "n": "无款设色京剧折子戏图",
       "a": "",
       "e": "清代（1644-1911）",
@@ -638,7 +611,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-painting",
+      "g": "c-modern",
       "n": "鲜藕莲蓬折扇",
       "a": "",
       "e": "民国（1912-1949）",
@@ -653,7 +626,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-painting",
+      "g": "c-qing",
       "n": "陶然亭秋宴图",
       "a": "",
       "e": "清代（1644-1911）",
@@ -668,7 +641,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-painting",
+      "g": "c-qing",
       "n": "样式雷玉泉山静明园地盘样",
       "a": "",
       "e": "清代（1644-1911）",
@@ -683,7 +656,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-painting",
+      "g": "c-qing",
       "n": "年画“新正逛厂甸”",
       "a": "",
       "e": "清代",
@@ -698,7 +671,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-painting",
+      "g": "c-ming",
       "n": "\"金鳌玉蝀\"桥石额",
       "a": "",
       "e": "明代·嘉靖（1522-1566）",
@@ -713,7 +686,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-painting",
+      "g": "c-qing",
       "n": "天中五毒献瑞图",
       "a": "",
       "e": "清代(1644-1911)",
@@ -728,7 +701,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-painting",
+      "g": "c-qing",
       "n": "智朴设色红杏青松图",
       "a": "",
       "e": "清代",
@@ -743,7 +716,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-painting",
+      "g": "c-qing",
       "n": "无款设色枣花寺牡丹图卷",
       "a": "",
       "e": "清代",
@@ -758,7 +731,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-painting",
+      "g": "c-qing",
       "n": "中秋拜月图",
       "a": "",
       "e": "清代(1644-1911)",
@@ -773,7 +746,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-calligraphy",
+      "g": "c-ming",
       "n": "绣字《药师经》",
       "a": "",
       "e": "明代·万历三十三年（1605）",
@@ -788,7 +761,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-calligraphy",
+      "g": "c-qing",
       "n": "敕修大藏经版",
       "a": "",
       "e": "清代（1644-1911）",
@@ -803,7 +776,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-curio",
+      "g": "c-liao-song-jin-yuan",
       "n": "“元章”款凤字形石砚",
       "a": "",
       "e": "元代（1271-1368）",
@@ -818,7 +791,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-buddha",
+      "g": "c-liao-song-jin-yuan",
       "n": "景德镇青白釉水月观音菩萨像",
       "a": "",
       "e": "元代（1271-1368）",
@@ -833,7 +806,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-buddha",
+      "g": "c-ming",
       "n": "景泰元年款铜鎏金阿弥陀佛像",
       "a": "",
       "e": "明代·景泰元年（1450）",
@@ -848,7 +821,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-textile",
+      "g": "c-qin-han-wei-jin",
       "n": "荒帷",
       "a": "",
       "e": "西汉（前206-25）",
@@ -863,7 +836,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-textile",
+      "g": "c-ming",
       "n": "四合如意流云暗花五枚褐色缎袈裟",
       "a": "",
       "e": "明代（1368-1644）",
@@ -878,7 +851,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-textile",
+      "g": "c-qing",
       "n": "缂丝加金岁朝图屏心",
       "a": "",
       "e": "清代",
@@ -893,7 +866,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-textile",
+      "g": "c-qing",
       "n": "缂丝十二章龙袍",
       "a": "",
       "e": "清代·乾隆（1736-1795）",
@@ -908,7 +881,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-jade",
+      "g": "c-liao-song-jin-yuan",
       "n": "青白玉折枝花形玉佩",
       "a": "",
       "e": "金代（1115-1234）",
@@ -923,7 +896,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-jade",
+      "g": "c-liao-song-jin-yuan",
       "n": "石雕麒麟纹栏板",
       "a": "",
       "e": "元代（1271-1368）",
@@ -938,7 +911,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-jade",
+      "g": "c-ming",
       "n": "白玉透雕龙纹带板",
       "a": "",
       "e": "明代（1368-1644）",
@@ -953,7 +926,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-jade",
+      "g": "c-qing",
       "n": "莲荷鹭鸶白玉活链盖卣",
       "a": "",
       "e": "清代（1644-1911）",
@@ -968,7 +941,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-coin",
+      "g": "c-liao-song-jin-yuan",
       "n": "至元通行宝钞",
       "a": "",
       "e": "元代（1271-1368）",
@@ -983,7 +956,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-other",
+      "g": "c-prehistory-shangzhou",
       "n": "“北京人”头盖骨（复制品）",
       "a": "",
       "e": "旧石器时代早期（距今约70多万-20万年）",
@@ -998,7 +971,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-other",
+      "g": "c-qin-han-wei-jin",
       "n": "西晋幽州剌史王浚夫人华芳墓志",
       "a": "",
       "e": "西晋（265-317）",
@@ -1013,7 +986,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-other",
+      "g": "c-qin-han-wei-jin",
       "n": "玻璃钵",
       "a": "",
       "e": "西晋（265-317）",
@@ -1028,7 +1001,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-other",
+      "g": "c-liao-song-jin-yuan",
       "n": "龙凤纹石椁",
       "a": "",
       "e": "金代（1115-1234）",
@@ -1043,7 +1016,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-other",
+      "g": "c-qing",
       "n": "京张铁路铁轨",
       "a": "",
       "e": "清代",
@@ -1058,7 +1031,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-other",
+      "g": "c-qing",
       "n": "北京女报",
       "a": "",
       "e": "清代·光绪三十一年（1905）",
@@ -1073,7 +1046,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-other",
+      "g": "c-qing",
       "n": "汉白玉花卉纹萨满祭祀神杆墩",
       "a": "",
       "e": "清代（1644-1911） ",
@@ -1088,7 +1061,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-other",
+      "g": "c-qing",
       "n": "嵌松石金斋戒牌",
       "a": "",
       "e": "清代（1644-1911）",
@@ -1103,7 +1076,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-other",
+      "g": "c-qing",
       "n": "郜焕元殿试卷",
       "a": "",
       "e": "清代·顺治四年（1647）",
@@ -1118,7 +1091,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-other",
+      "g": "c-qing",
       "n": "朗润园通景屏",
       "a": "",
       "e": "清代（1644-1911）",
@@ -1133,7 +1106,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-other",
+      "g": "c-ming",
       "n": "嘉靖款胜字流星炮",
       "a": "",
       "e": "明代·嘉靖年（1522-1566）",
@@ -1148,7 +1121,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-other",
+      "g": "c-qing",
       "n": "白塔寺塔刹文物（一组）",
       "a": "",
       "e": "清代·乾隆（1736-1795）",
@@ -1163,7 +1136,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-other",
+      "g": "c-liao-song-jin-yuan",
       "n": "鹊桥相会故事纹铜镜",
       "a": "",
       "e": "金代（1115-1234）",
@@ -1178,7 +1151,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-other",
+      "g": "c-modern",
       "n": "罗德俊手稿",
       "a": "",
       "e": "1978年白塔寺整修时在塔顶中发现了手稿",
@@ -1193,7 +1166,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-other",
+      "g": "c-qing",
       "n": "铜鎏金双龙戏珠纹暖手炉",
       "a": "",
       "e": "清代(1644-1911)",
@@ -1208,7 +1181,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-other",
+      "g": "c-qing",
       "n": "金漆东厨司命九皇灶君神位",
       "a": "",
       "e": "清代（1644-1911）",
@@ -1223,7 +1196,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-other",
+      "g": "c-liao-song-jin-yuan",
       "n": "石函",
       "a": "",
       "e": "辽代（907-1125）",
@@ -1238,7 +1211,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-other",
+      "g": "c-qing",
       "n": "象牙盖蝈蝈葫芦",
       "a": "",
       "e": "清代（1644-1911） ",
@@ -1253,7 +1226,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-other",
+      "g": "c-qing",
       "n": "顾先生祠会祭题名第一卷子",
       "a": "",
       "e": "清代（1644）",
@@ -1268,7 +1241,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-other",
+      "g": "c-ming",
       "n": "“万历五年墙子路造”长城砖",
       "a": "",
       "e": "明代·万历五年（1577）",
@@ -1283,7 +1256,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-other",
+      "g": "c-modern",
       "n": "百货大楼预展试销入场券",
       "a": "",
       "e": "1955年",
@@ -1298,7 +1271,7 @@ window.CAPITAL_CATALOG = {
       "source": "https://www.capitalmuseum.org.cn/collection"
     },
     {
-      "g": "c-other",
+      "g": "c-modern",
       "n": "1951年首都北京春季清洁大扫除运动表扬信",
       "a": "",
       "e": "1951年",

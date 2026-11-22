@@ -28,9 +28,9 @@
       seal: '首',
       title: '首博讲解手册',
       tagline: '馆藏精品 · 北京',
-      sectionTitle: '按门类，读一座北京城',
+      sectionTitle: '按时间，读一座北京城',
       searchPlaceholder: '搜文物、年代、关键词……',
-      emptyHint: '先建立一个门类，比如“青铜器”或“陶瓷器”。',
+      emptyHint: '先建立一个时间单元，比如“史前 · 商周”或“明”。',
       source: 'https://www.capitalmuseum.org.cn/collection',
       themeColor: '#e7eee8'
     }
@@ -163,6 +163,16 @@
   }
   function activeCatalog() {
     return state.ui.museumId === 'capital' ? window.CAPITAL_CATALOG : window.CATALOG_DATA;
+  }
+  function capitalTimeUnitForEra(era) {
+    const e = String(era || '');
+    if (/旧石器|新石器|商|西周|春秋|战国/.test(e)) return 'c-prehistory-shangzhou';
+    if (/秦|西汉|东汉|西晋|东晋|北朝|南朝|三国|魏晋/.test(e)) return 'c-qin-han-wei-jin';
+    if (/辽|宋|金|元代|元朝/.test(e)) return 'c-liao-song-jin-yuan';
+    if (/明/.test(e)) return 'c-ming';
+    if (/清/.test(e)) return 'c-qing';
+    if (/民国|19[4-9]\d|20\d\d/.test(e)) return 'c-modern';
+    return 'c-prehistory-shangzhou';
   }
   function applyMuseum(id, persist) {
     const chosen = MUSEUMS[id] ? id : 'national';
@@ -367,8 +377,10 @@
     if (!input || !Array.isArray(input.galleries) || !Array.isArray(input.artifacts)) {
       throw new Error('文件格式不对：需要 galleries 和 artifacts 两个数组。');
     }
+    const legacyCapitalIds = new Set((window.CAPITAL_CATALOG && window.CAPITAL_CATALOG.legacyIds) || []);
     const galleries = input.galleries
       .filter((g) => g && g.id && g.name)
+      .filter((g) => !(legacyCapitalIds.has(String(g.id)) && (g.museumId === 'capital' || !g.museumId)))
       .map((g) => ({
         id: String(g.id),
         name: String(g.name),
@@ -386,7 +398,7 @@
           galleries.push({
             id: String(unit.id),
             name: String(unit.name),
-            period: String(unit.period || '馆藏分类'),
+            period: String(unit.period || ''),
             description: String(unit.description || ''),
             color: colorSafe(unit.color),
             museumId: 'capital'
@@ -407,11 +419,17 @@
     };
     const artifacts = input.artifacts
       .filter((a) => a && a.id && a.name)
-      .map((a) => ({
+      .map((a) => {
+        const rawGalleryId = String(a.galleryId || '');
+        const mappedGalleryId = legacyCapitalIds.has(rawGalleryId)
+          ? capitalTimeUnitForEra(a.era || a.date)
+          : rawGalleryId;
+        const galleryId = ids.has(mappedGalleryId) ? mappedGalleryId : galleries[0].id;
+        return {
         ...a,
         id: String(a.id),
-        galleryId: ids.has(a.galleryId) ? a.galleryId : galleries[0].id,
-        museumId: MUSEUMS[a.museumId] ? a.museumId : museumOfGallery(galleryMap.get(ids.has(a.galleryId) ? a.galleryId : galleries[0].id)),
+        galleryId,
+        museumId: MUSEUMS[a.museumId] ? a.museumId : museumOfGallery(galleryMap.get(galleryId)),
         name: String(a.name),
         alias: String(a.alias || ''),
         era: String(a.era || a.date || ''),
@@ -440,7 +458,8 @@
         sources: Array.isArray(a.sources) ? a.sources.filter((s) => s && s.title).map((s) => ({ title: String(s.title), url: String(s.url || '') })) : [],
         createdAt: a.createdAt || nowISO(),
         updatedAt: a.updatedAt || nowISO()
-      }));
+        };
+      });
     artifacts.forEach((a) => { delete a.status; });
     const settings = Object.assign(defaultSettings(), input.settings || {});
     if (!settings.apiBase || settings.apiBase === '/api/ai') settings.apiBase = 'https://api.deepseek.com/chat/completions';
@@ -1038,7 +1057,7 @@
           '<div class="about-block"><strong>它是什么：</strong>一个单机优先的讲解员工作台。目录按“单元 → 文物 → 简介 / 讲解故事”组织，内容可随时增删改；AI 只负责按统一格式起草，最终解释权在你。</div>' +
           '<div class="about-block"><strong>示例内容：</strong>13 件文物为讲解练习草稿，依据国博官网公开资料整理，但年代、尺寸、出土地和叙事解释仍应以展厅说明牌与最新研究为准。</div>' +
           '<div class="about-block"><strong>图片版权：</strong>示例图片来自中国国家博物馆、首都博物馆官网，版权归原权利人所有，仅用于个人学习与讲解准备，请勿商用或公开再分发。</div>' +
-          '<div class="about-block"><strong>技术：</strong>原生 HTML / CSS / JavaScript，无框架、无账号、无云端。数据保存在 IndexedDB，支持导出 JSON。版本 1.0.0 · 正式版。</div>' +
+          '<div class="about-block"><strong>技术：</strong>原生 HTML / CSS / JavaScript，无框架、无账号、无云端。数据保存在 IndexedDB，支持导出 JSON。版本 1.1.0 · 正式版。</div>' +
         '</section>' +
       '</div>' +
     '</main>';
