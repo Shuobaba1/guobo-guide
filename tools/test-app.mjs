@@ -45,6 +45,7 @@ await send('Page.navigate', { url: 'http://127.0.0.1:4173' });
 await waitFor('document.querySelectorAll(".era-row").length === 8', 6000);
 
 check('首页加载 8 个单元', await evaluate('document.querySelectorAll(".era-row").length') === 8);
+check('首页没有卡片助手', await evaluate('!document.querySelector("#card-assistant")'));
 check('首页统计 13 件文物', (await evaluate('document.querySelector(".hero-stats").innerText'))?.includes('13'));
 await evaluate('document.querySelector(".theme-swatch[data-theme=ink]").click()');
 await sleep(250);
@@ -72,6 +73,19 @@ await waitFor('location.hash.includes("/a/")');
 check('进入文物详情', (await evaluate('document.querySelector(".split-detail .artifact-title h1").innerText')).includes('鹳鱼石斧'));
 check('详情深链接', (await evaluate('location.hash')).includes('#/g/g-yuan-gu/a/'));
 check('打开详情不自动聚焦', await evaluate('!["INPUT","TEXTAREA"].includes(document.activeElement.tagName)'));
+
+check('详情有卡片助手', await evaluate('!!document.querySelector("#card-assistant .assistant-fab")'));
+await evaluate('document.querySelector(".assistant-fab").click()');
+await waitFor('!!document.querySelector(".assistant-panel")');
+check('助手只在本卡出现', await evaluate('document.querySelector(".assistant-head h2").innerText.includes("鹳鱼石斧") && document.querySelectorAll(".assistant-suggestions button").length === 4'));
+check('助手打开不自动聚焦', await evaluate('!["INPUT","TEXTAREA"].includes(document.activeElement.tagName)'));
+check('助手输入框不小于 16px', parseFloat(await evaluate('getComputedStyle(document.querySelector("#assistant-input")).fontSize')) >= 16);
+await evaluate('document.querySelector("#assistant-input").value = "这件文物是什么年代的？"; document.querySelector("#assistant-form").requestSubmit()');
+await waitFor('!!document.querySelector(".assistant-error")');
+check('助手无 Key 有提示', (await evaluate('document.querySelector(".assistant-error").innerText')).includes('Key'));
+await evaluate('document.querySelector("[data-action=chat-close]").click()');
+await waitFor('!document.querySelector("#card-assistant.open")');
+check('助手关闭清空', await evaluate('!document.querySelector("#card-assistant.open") && !document.querySelector(".assistant-msg") && !!document.querySelector(".assistant-fab")'));
 
 await evaluate('document.querySelector("[data-action=open-reader]").click()');
 await waitFor('!!document.querySelector(".reader")');
@@ -240,6 +254,25 @@ await sleep(250);
 await evaluate('document.querySelector(".museum-switch [data-museum=national]").click()');
 await waitFor('document.documentElement.dataset.museum === "national" && document.querySelectorAll(".era-row").length === 9');
 check('切回国博', await evaluate('document.querySelectorAll(".era-row").length === 9'));
+
+await evaluate('location.hash = "#/settings"');
+await waitFor('document.querySelectorAll(".font-option").length === 3');
+check('字号三档存在', await evaluate('document.querySelectorAll(".font-option").length === 3'));
+await evaluate('document.querySelector("[data-action=set-ui-font][data-font=medium]").click()');
+await sleep(250);
+check('界面字号中 18px', await evaluate('document.documentElement.dataset.uiFont === "medium" && getComputedStyle(document.documentElement).fontSize === "18px" && getComputedStyle(document.body).fontSize === "18px"'));
+await evaluate('document.querySelector("[data-action=set-ui-font][data-font=large]").click()');
+await sleep(250);
+check('界面字号大 20px', await evaluate('getComputedStyle(document.documentElement).fontSize === "20px" && getComputedStyle(document.body).fontSize === "20px"'));
+check('大字号无横向溢出', await evaluate('document.documentElement.scrollWidth <= innerWidth'));
+await evaluate('location.hash = "#/a/a-guanyu"');
+await waitFor('!!document.querySelector(".artifact-title h1")');
+check('大字号卡片内容放大', await evaluate('parseFloat(getComputedStyle(document.querySelector(".artifact-title h1")).fontSize) > 30 && document.documentElement.scrollWidth <= innerWidth'));
+await evaluate('location.hash = "#/settings"');
+await waitFor('document.querySelectorAll(".font-option").length === 3');
+await evaluate('document.querySelector("[data-action=set-ui-font][data-font=small]").click()');
+await sleep(200);
+check('界面字号回到 16px', await evaluate('getComputedStyle(document.documentElement).fontSize === "16px" && getComputedStyle(document.body).fontSize === "16px"'));
 
 const saved = await evaluate('JSON.stringify({len: (localStorage.getItem("guobo-guide-v1")||"").length})');
 console.log('DATA', saved);

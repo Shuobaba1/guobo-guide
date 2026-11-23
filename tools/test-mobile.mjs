@@ -45,7 +45,7 @@ check('无横向溢出', await ev('document.documentElement.scrollWidth <= inner
 check('底部导航显示', await ev('getComputedStyle(document.querySelector(".bottom-nav")).display !== "none"'));
 check('搜索框 16px 防缩放', (await ev('getComputedStyle(document.querySelector(".search-box input")).fontSize')) === '16px');
 check('Service Worker 已注册', await ev('navigator.serviceWorker.ready.then((r) => !!r.active)'));
-check('离线缓存版本 v26', await ev('caches.keys().then((keys) => keys.includes("guobo-guide-v26"))'));
+check('离线缓存版本 v27', await ev('caches.keys().then((keys) => keys.includes("guobo-guide-v27"))'));
 
 await ev('document.querySelector(".era-row").click()');
 await waitFor('!!document.querySelector(".artifact-row")');
@@ -79,6 +79,14 @@ await ev('document.querySelector(".artifact-row").click()');
 await waitFor('location.hash.startsWith("#/a/")');
 check('手机点文物进单页详情', (await ev('document.querySelector(".artifact-title h1").innerText')).includes('鹳鱼石斧'));
 check('详情无分栏', await ev('!document.querySelector(".split-layout")'));
+check('手机详情有卡片助手', await ev('!!document.querySelector("#card-assistant .assistant-fab")'));
+await ev('document.querySelector(".assistant-fab").click()');
+await waitFor('!!document.querySelector(".assistant-panel")');
+check('手机助手面板不出屏', await ev('document.querySelector(".assistant-panel").getBoundingClientRect().right <= innerWidth + 1 && document.querySelector(".assistant-panel").getBoundingClientRect().left >= -1'));
+check('手机助手不自动聚焦', await ev('!["INPUT","TEXTAREA"].includes(document.activeElement.tagName)'));
+check('手机助手输入 16px', parseFloat(await ev('getComputedStyle(document.querySelector("#assistant-input")).fontSize')) >= 16);
+await ev('document.querySelector("[data-action=chat-close]").click()');
+await sleep(150);
 
 await ev('document.querySelector("[data-action=open-reader]").click()');
 await waitFor('!!document.querySelector(".reader")');
@@ -117,6 +125,13 @@ await ev('location.hash="#/settings"');
 await sleep(500);
 check('设置里有 iPhone 安装说明', await ev('document.body.innerText.includes("iPhone")'));
 check('设置页可切底色', await ev('document.querySelectorAll(".settings-theme .theme-swatch").length === 4'));
+check('手机字号三档', await ev('document.querySelectorAll(".font-option").length === 3'));
+await ev('document.querySelector("[data-action=set-ui-font][data-font=large]").click()');
+await sleep(250);
+check('手机大字号 20px', await ev('getComputedStyle(document.body).fontSize === "20px"'));
+check('手机大字号不溢出', await ev('document.documentElement.scrollWidth <= innerWidth'));
+await ev('document.querySelector("[data-action=set-ui-font][data-font=small]").click()');
+await sleep(150);
 
 await send('Emulation.setDeviceMetricsOverride', { width: 844, height: 390, deviceScaleFactor: 2, mobile: true });
 await send('Page.navigate', { url: 'http://127.0.0.1:4173#/g/g-yuan-gu/a/a-guanyu' });

@@ -41,6 +41,12 @@
   const DB_STORE = 'kv';
   const READER_SIZES = [22, 26, 30, 34];
   const THEME_KEY = 'guobo-theme';
+  const UI_FONT_KEY = 'guobo-ui-font';
+  const UI_FONTS = [
+    { id: 'small', name: '小', px: 16 },
+    { id: 'medium', name: '中', px: 18 },
+    { id: 'large', name: '大', px: 20 }
+  ];
   const THEMES = [
     { id: 'paper', name: '宣纸' },
     { id: 'white', name: '纯白' },
@@ -64,6 +70,7 @@
       ai: null,
       cardMenu: null,
       quick: null,
+      cardChat: { artifactId: null, open: false, messages: [], loading: false, error: '' },
       reader: null,
       review: { galleryId: 'all', artifactId: null, revealed: false, count: 0 },
       lastArtifact: null
@@ -80,6 +87,9 @@
   let dragId = null;
   let dropTarget = null;
   let lastDragAt = 0;
+  function emptyCardChat() {
+    return { artifactId: null, open: false, messages: [], loading: false, error: '' };
+  }
 
   /* ---------------- icons ---------------- */
   const ICONS = {
@@ -244,6 +254,20 @@
       try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* ignore */ }
     }
     return theme;
+  }
+  function normalizeUIFont(id) {
+    return UI_FONTS.some((f) => f.id === id) ? id : 'small';
+  }
+  function currentUIFont() {
+    try { return normalizeUIFont(localStorage.getItem(UI_FONT_KEY)); } catch (e) { return 'small'; }
+  }
+  function applyUIFont(id, persist) {
+    const font = normalizeUIFont(id);
+    document.documentElement.dataset.uiFont = font;
+    if (persist) {
+      try { localStorage.setItem(UI_FONT_KEY, font); } catch (e) { /* ignore */ }
+    }
+    return font;
   }
   function formatBytes(bytes) {
     if (!bytes) return '0 KB';
@@ -576,7 +600,12 @@
       : route.name === 'review' ? reviewView()
       : route.name === 'settings' ? settingsView()
       : homeView();
-    document.getElementById('app').innerHTML = header(route) + view + bottomNav(route);
+    document.getElementById('app').innerHTML = header(route) + view + bottomNav(route) +
+      (() => {
+        const a = route.name === 'artifact' ? findArtifact(route.id)
+          : route.name === 'gallery' && route.selectedId ? findArtifact(route.selectedId) : null;
+        return a ? cardAssistantHTML(a) : '';
+      })();
     const museum = currentMuseum();
     const selected = route.name === 'artifact' ? findArtifact(route.id) : route.name === 'gallery' && route.selectedId ? findArtifact(route.selectedId) : null;
     document.title = selected
@@ -616,6 +645,7 @@
     state.ui.editor = null;
     state.ui.ai = null;
     state.ui.manager = null;
+    state.ui.cardChat = emptyCardChat();
     if (!sameGallery) state.ui.sortMode = false;
     closeReader(true);
     renderModal();
@@ -921,6 +951,139 @@
     if (!a) return notFound('找不到这件文物');
     return '<main class="page detail-page"><div class="shell">' + artifactDetailHTML(a, false) + '</div></main>';
   }
+
+  /* ---------------- card AI assistant ---------------- */
+  const CARD_CHAT_SUGGESTIONS = [
+    '这件文物最值得讲什么？',
+    '观众最常问什么？',
+    '给我 30 秒讲解版',
+    '哪些地方需要核对？'
+  ];
+  function cardChatPrompt(a) {
+    const museum = museumConfig(museumOfArtifact(a));
+    const gallery = findGallery(a.galleryId);
+    const lines = [
+      '你是讲解员的随身助手，只回答关于《' + a.name + '》这件文物的问题。',
+      '',
+      '【当前卡片资料】',
+      '名称：' + a.name,
+      '博物馆：' + (a.museum || museum.name),
+      '单元：' + (gallery ? gallery.name : galleryName(a.galleryId)),
+      '年代：' + (a.era || a.date || '未填'),
+      '材质：' + (a.material || '未填'),
+      '类别：' + (a.category || '未填'),
+      '尺寸：' + (a.size || '未填'),
+      '重量：' + (a.weight || '未填'),
+      '出土/来源：' + (a.unearthed || '未填'),
+      '简介：' + (a.summary || '未填'),
+      '讲解故事：' + (storyText(a) || '未填'),
+      '笔记：' + (a.notes || '无'),
+      '',
+      '【回答规则】',
+      '1. 只回答这件文物本身、它的历史背景或讲解方法；无关问题礼貌拉回。',
+      '2. 优先使用上面的卡片资料；卡片没有的信息，明确说“卡片里没有”，不要假装卡片里有。',
+      '3. 不编造年代、尺寸、重量、出土地、馆藏号；不确定就建议核对展厅说明牌或两馆官网。',
+      '4. 卡片内容可能是 AI 草稿；涉及具体史实时，必要时提醒“这条还需要核对”。',
+      '5. 回答 2–5 句，先给结论再解释；讲解口径可以直接给口语版。',
+      '6. 不写“你可以指向”“先别急着看”“注意看”这类舞台提示。',
+      '7. 不要输出 Markdown 表格或代码块，保持适合手机阅读的短段落。'
+    ];
+    return lines.join('\n');
+  }
+  function cardAssistantHTML(a) {
+    const c = state.ui.cardChat;
+    const open = c.open && c.artifactId === a.id;
+    const hasMessages = c.messages.length > 0;
+    const intro = '<div class="assistant-intro">' +
+      '<p>我只回答《' + esc(a.name) + '》的问题。可以问：</p>' +
+      '<div class="assistant-suggestions">' +
+        CARD_CHAT_SUGGESTIONS.map((q) => '<button type="button" data-action="chat-suggest" data-question="' + esc(q) + '">' + esc(q) + '</button>').join('') +
+      '</div>' +
+    '</div>';
+    const bubbles = c.messages.map((m) => '<div class="assistant-msg ' + (m.role === 'user' ? 'user' : 'bot') + '">' + (m.role === 'assistant' ? nl2br(esc(m.content)) : esc(m.content)) + '</div>').join('');
+    const loading = c.loading ? '<div class="assistant-msg bot loading"><span class="spinner"></span>正在查阅这张卡片……</div>' : '';
+    const error = c.error ? '<div class="assistant-error">' + esc(c.error) + '<br><a href="#/settings" data-action="go-settings">去设置检查 Key / 接口</a></div>' : '';
+    return '<div id="card-assistant" class="card-assistant' + (open ? ' open' : '') + '" data-artifact="' + esc(a.id) + '">' +
+      '<button type="button" class="assistant-fab" data-action="chat-toggle" aria-label="问这件文物" aria-expanded="' + (open ? 'true' : 'false') + '">' + icon('sparkle') + '<span>问这件</span></button>' +
+      '<section class="assistant-panel" role="dialog" aria-modal="false" aria-labelledby="assistant-title">' +
+        '<header class="assistant-head">' +
+          '<div><p class="kicker">本卡助手</p><h2 id="assistant-title">问《' + esc(a.name) + '》</h2><p>只基于这张卡片回答，史实请再核对。</p></div>' +
+          '<button type="button" class="icon-btn" data-action="chat-close" aria-label="关闭助手">' + icon('close') + '</button>' +
+        '</header>' +
+        '<div class="assistant-messages" id="assistant-messages">' +
+          (!hasMessages ? intro : '') +
+          bubbles + loading + error +
+        '</div>' +
+        '<form class="assistant-form" id="assistant-form">' +
+          '<input id="assistant-input" type="text" placeholder="问这件文物的任何问题……" autocomplete="off" maxlength="500" aria-label="输入问题">' +
+          '<button type="submit" class="btn btn-primary btn-sm" ' + (c.loading ? 'disabled' : '') + '>发送</button>' +
+        '</form>' +
+        '<p class="assistant-foot">回答基于本卡资料；不确定的地方会提示你核对。</p>' +
+      '</section>' +
+    '</div>';
+  }
+  function renderCardAssistant(scroll) {
+    const c = state.ui.cardChat;
+    const a = c.artifactId ? findArtifact(c.artifactId) : null;
+    const host = document.getElementById('card-assistant');
+    if (!a) {
+      if (host) host.remove();
+      return;
+    }
+    const html = cardAssistantHTML(a);
+    if (host) host.outerHTML = html;
+    else document.getElementById('app').insertAdjacentHTML('beforeend', html);
+    if (scroll) {
+      const box = document.getElementById('assistant-messages');
+      if (box) box.scrollTop = box.scrollHeight;
+    }
+  }
+  function openCardChat(id) {
+    const a = findArtifact(id);
+    if (!a) return;
+    const c = emptyCardChat();
+    c.artifactId = a.id;
+    c.open = true;
+    state.ui.cardChat = c;
+    renderCardAssistant();
+  }
+  function closeCardChat() {
+    const id = state.ui.cardChat.artifactId;
+    state.ui.cardChat = Object.assign(emptyCardChat(), { artifactId: id });
+    renderCardAssistant();
+  }
+  async function sendCardChat(text) {
+    const c = state.ui.cardChat;
+    const a = c.artifactId ? findArtifact(c.artifactId) : null;
+    const q = String(text || '').trim();
+    if (!a || !q || c.loading) return;
+    c.messages.push({ role: 'user', content: q });
+    c.loading = true;
+    c.error = '';
+    renderCardAssistant(true);
+    const s = state.data.settings;
+    const isProxy = s.apiBase.charAt(0) === '/';
+    if (!s.apiKey && !isProxy) {
+      c.loading = false;
+      c.error = '还没有填 DeepSeek API Key，先去设置里填上再问。';
+      renderCardAssistant(true);
+      return;
+    }
+    const history = c.messages.slice(-8).map((m) => ({ role: m.role, content: m.content }));
+    try {
+      const answer = await chatCompletion([{ role: 'system', content: cardChatPrompt(a) }, ...history], 700, { json: false, temperature: 0.5 });
+      const clean = String(answer || '').trim();
+      if (!clean) throw new Error('AI 没有返回内容。');
+      c.messages.push({ role: 'assistant', content: clean });
+    } catch (e) {
+      c.error = e.message || '提问失败，请重试。';
+    }
+    c.loading = false;
+    renderCardAssistant(true);
+    const input = document.getElementById('assistant-input');
+    if (input) input.focus({ preventScroll: true });
+  }
+
   /* ---------------- review ---------------- */
   function reviewPool() {
     const gid = state.ui.review.galleryId || 'all';
@@ -1043,6 +1206,13 @@
           '</div>' +
         '</section>' +
         '<section class="settings-section">' +
+          '<h2>界面字号</h2><p class="section-desc">影响目录、卡片标题、简介、档案、表单和弹窗；讲解模式另有独立字号，不受这里影响。</p>' +
+          '<div class="font-switch" role="group" aria-label="界面字号">' +
+            UI_FONTS.map((f) => '<button type="button" class="font-option ' + (currentUIFont() === f.id ? 'active' : '') + '" data-action="set-ui-font" data-font="' + f.id + '" aria-pressed="' + (currentUIFont() === f.id ? 'true' : 'false') + '"><strong>' + f.name + '</strong><span>' + f.px + 'px</span></button>').join('') +
+          '</div>' +
+          '<p class="tiny muted" style="margin-top:9px">最小 16px；输入框保持不小于 16px，避免 iPhone 自动放大。</p>' +
+        '</section>' +
+        '<section class="settings-section">' +
           '<h2>装到手机上（iPhone / 华为）</h2><p class="section-desc">网页版可以直接用；装到主屏幕后像 App 一样全屏打开。iPhone 的离线缓存和安装需要 HTTPS 地址。</p>' +
           '<ol class="install-steps">' +
             '<li>手机和电脑在同一 Wi-Fi，用手机打开电脑的局域网地址；或把整个文件夹放到一个 HTTPS 静态网站。</li>' +
@@ -1057,7 +1227,7 @@
           '<div class="about-block"><strong>它是什么：</strong>一个单机优先的讲解员工作台。目录按“单元 → 文物 → 简介 / 讲解故事”组织，内容可随时增删改；AI 只负责按统一格式起草，最终解释权在你。</div>' +
           '<div class="about-block"><strong>示例内容：</strong>13 件文物为讲解练习草稿，依据国博官网公开资料整理，但年代、尺寸、出土地和叙事解释仍应以展厅说明牌与最新研究为准。</div>' +
           '<div class="about-block"><strong>图片版权：</strong>示例图片来自中国国家博物馆、首都博物馆官网，版权归原权利人所有，仅用于个人学习与讲解准备，请勿商用或公开再分发。</div>' +
-          '<div class="about-block"><strong>技术：</strong>原生 HTML / CSS / JavaScript，无框架、无账号、无云端。数据保存在 IndexedDB，支持导出 JSON。版本 1.1.0 · 正式版。</div>' +
+          '<div class="about-block"><strong>技术：</strong>原生 HTML / CSS / JavaScript，无框架、无账号、无云端。数据保存在 IndexedDB，支持导出 JSON。版本 1.2.0 · 正式版。</div>' +
         '</section>' +
       '</div>' +
     '</main>';
@@ -1256,7 +1426,7 @@
                 '<div class="image-preview" id="image-preview">' + (safeUrl(a.image) ? '<img src="' + esc(safeUrl(a.image)) + '" alt="配图预览">' : '<div class="empty">还没有配图</div>') + '</div>' +
                 '<div class="image-fields">' +
                   '<input type="file" id="image-file" accept="image/*" class="hidden">' +
-                  '<input id="f-image" name="image" class="input mono" value="' + esc(a.image) + '" placeholder="粘贴图片 URL，或本地上传" style="font-size:11px">' +
+                  '<input id="f-image" name="image" class="input mono" value="' + esc(a.image) + '" placeholder="粘贴图片 URL，或本地上传" style="font-size:0.6875rem">' +
                   '<div class="image-buttons">' +
                     '<button class="btn btn-sm btn-ghost" type="button" data-action="pick-image">' + icon('upload') + '上传本地图片</button>' +
                     '<button class="btn btn-sm btn-quiet" type="button" data-action="clear-image">清除</button>' +
@@ -1777,7 +1947,8 @@
     if (!result.summary && !result.story) throw new Error('返回内容里没有 summary 或 story，无法应用。');
     return result;
   }
-  async function chatCompletion(messages, maxTokens) {
+  async function chatCompletion(messages, maxTokens, options) {
+    const opts = options || {};
     const s = state.data.settings;
     if (!s.apiBase) throw new Error('还没有设置接口地址。');
     const headers = { 'Content-Type': 'application/json' };
@@ -1789,12 +1960,12 @@
     const body = {
       model: s.model || 'deepseek-flash',
       messages,
-      temperature: 0.65,
+      temperature: typeof opts.temperature === 'number' ? opts.temperature : 0.65,
       max_tokens: maxTokens || 1800
     };
     if (isDeepSeek) {
       body.thinking = { type: s.thinking ? 'enabled' : 'disabled' };
-      body.response_format = { type: 'json_object' };
+      if (opts.json !== false) body.response_format = { type: 'json_object' };
       if (s.thinking) body.max_tokens = Math.max(body.max_tokens, 4000);
     }
     try {
@@ -2130,6 +2301,18 @@
         toast('底色：' + (found ? found.name : theme));
         return;
       }
+      if (action === 'set-ui-font') {
+        e.preventDefault();
+        const font = applyUIFont(el.getAttribute('data-font'), true);
+        document.querySelectorAll('.font-option').forEach((btn) => {
+          const on = btn.getAttribute('data-font') === font;
+          btn.classList.toggle('active', on);
+          btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        const found = UI_FONTS.find((f) => f.id === font);
+        toast('界面字号：' + (found ? found.name + ' · ' + found.px + 'px' : font));
+        return;
+      }
       if (action === 'switch-museum') {
         e.preventDefault();
         const id = el.getAttribute('data-museum');
@@ -2139,6 +2322,22 @@
         closeModal();
         navigate('#/');
         toast('已切换到' + MUSEUMS[id].name);
+        return;
+      }
+      if (action === 'chat-toggle') {
+        e.preventDefault();
+        const host = el.closest('#card-assistant');
+        if (host) openCardChat(host.getAttribute('data-artifact'));
+        return;
+      }
+      if (action === 'chat-close') {
+        e.preventDefault();
+        closeCardChat();
+        return;
+      }
+      if (action === 'chat-suggest') {
+        e.preventDefault();
+        sendCardChat(el.getAttribute('data-question'));
         return;
       }
       if (action === 'toggle-sort') {
@@ -2474,7 +2673,12 @@
     });
 
     document.addEventListener('submit', (e) => {
-      if (e.target.id === 'artifact-form') {
+      if (e.target.id === 'assistant-form') {
+        e.preventDefault();
+        const input = document.getElementById('assistant-input');
+        sendCardChat(input ? input.value : '');
+        if (input) input.value = '';
+      } else if (e.target.id === 'artifact-form') {
         e.preventDefault();
         saveArtifactForm(e.target);
       } else if (e.target.id === 'gallery-form') {
@@ -2583,6 +2787,7 @@
         if (first) { e.preventDefault(); first.click(); return; }
       }
       if (e.key === 'Escape') {
+        if (state.ui.cardChat.open) { closeCardChat(); return; }
         if (state.ui.reader) { closeReader(); return; }
         if (state.ui.modal) { closeModal(); return; }
       }
@@ -2770,6 +2975,7 @@
   }
   async function init() {
     applyTheme(currentTheme(), false);
+    applyUIFont(currentUIFont(), false);
     showBoot();
     let loaded = null;
     try { loaded = await loadStored(); } catch (e) { loaded = null; }

@@ -21,6 +21,8 @@
       if (['paper', 'white', 'ink', 'slate'].indexOf(t) >= 0) document.documentElement.dataset.theme = t;
       var m = localStorage.getItem('guobo-museum');
       if (m === 'national' || m === 'capital') document.documentElement.dataset.museum = m;
+      var f = localStorage.getItem('guobo-ui-font');
+      if (['small', 'medium', 'large'].indexOf(f) >= 0) document.documentElement.dataset.uiFont = f;
     } catch (e) {}
   </script>
   <link rel="stylesheet" href="styles.css">

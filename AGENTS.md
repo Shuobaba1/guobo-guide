@@ -28,6 +28,8 @@
 - `sw.js`：离线缓存；改前端资源后必须把 `CACHE` 版本号 +1。
 - `dist/国博讲解手册.html`：由 `tools/build-standalone.mjs` 生成，不要手改。
 - 数据：优先 IndexedDB，localStorage 兜底；图片上传压缩成 data URL。
+- 全局字号：`html[data-ui-font]` + `rem`，三档 16/18/20；讲解模式字号独立。
+- 卡片助手：只在详情/分栏选中卡片时渲染；`state.ui.cardChat` 仅内存保存，关闭或离开即清空；聊天调用 `chatCompletion(..., {json:false})`，不要强制 JSON。
 
 ## 常用命令
 
@@ -55,7 +57,7 @@ UI 自动化测试需要：本地服务运行在 4173、Chrome 以 `--remote-deb
 4. **图片版权**：`assets/seed`、`assets/catalog` 来自国博官网，`assets/capital` 来自首博官网，仅限个人学习；新增图片要注明来源，公开 / 商用需授权。
 5. **示例内容**：都是草稿，不把推测写成定论；不确定的写「（待核对）」。
 6. **移动端验收已开始**：iPhone 390×844、横屏 844×390，华为折叠屏 800 宽；桌面 1280 / 1440 继续跑。Chromium 模拟不能替代真机 Safari / 华为浏览器，真机结果单独记。
-7. **发布三件套**：改完跑语法检查 → 跑 55 项桌面 UI 测试 + 37 项手机视口测试 → 重建 `dist`，并在 `CHANGELOG.md` 记一笔。
+7. **发布三件套**：改完跑语法检查 → 跑 68 项桌面 UI 测试 + 44 项手机视口测试 → 重建 `dist`，并在 `CHANGELOG.md` 记一笔。
 
 ## 目录约定
 
