@@ -71,6 +71,7 @@
       cardMenu: null,
       quick: null,
       cardChat: { artifactId: null, open: false, messages: [], loading: false, error: '' },
+      tts: { artifactId: null, speaking: false, token: 0, timer: null, started: false },
       reader: null,
       review: { galleryId: 'all', artifactId: null, revealed: false, count: 0 },
       lastArtifact: null
@@ -105,6 +106,7 @@
     copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
     plus: '<path d="M12 5v14"/><path d="M5 12h14"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    volume: '<path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>',
     chevron: '<path d="m9 18 6-6-6-6"/>',
     close: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
     upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>',
@@ -646,6 +648,7 @@
     state.ui.ai = null;
     state.ui.manager = null;
     state.ui.cardChat = emptyCardChat();
+    stopStoryTts();
     if (!sameGallery) state.ui.sortMode = false;
     closeReader(true);
     renderModal();
@@ -922,7 +925,10 @@
             '</div>' +
             '<section class="panel summary-panel"><span class="label kicker">一句话简介</span><p>' + esc(a.summary || '还没有简介。点“编辑”或“AI 起草”补上。') + '</p></section>' +
             '<section class="panel">' +
-              '<div class="panel-head"><h2>讲解故事</h2><button class="btn btn-sm btn-ghost copy-script" data-action="copy-script" data-id="' + esc(a.id) + '">' + icon('copy') + '复制全篇</button></div>' +
+              '<div class="panel-head"><h2>讲解故事</h2><div class="panel-tools">' +
+                '<button id="story-tts" type="button" class="btn btn-sm btn-ghost story-tts' + (state.ui.tts.speaking && state.ui.tts.artifactId === a.id ? ' speaking' : '') + '" data-action="toggle-tts" data-id="' + esc(a.id) + '" aria-pressed="' + (state.ui.tts.speaking && state.ui.tts.artifactId === a.id ? 'true' : 'false') + '" title="朗读讲解故事">' + icon('volume') + '<span>' + (state.ui.tts.speaking && state.ui.tts.artifactId === a.id ? '停止' : '朗读') + '</span></button>' +
+                '<button class="btn btn-sm btn-ghost copy-script" data-action="copy-script" data-id="' + esc(a.id) + '">' + icon('copy') + '复制全篇</button>' +
+              '</div></div>' +
               (storyText(a) ? '<div class="story-text">' + nl2br(storyText(a)) + '</div>' : '<p class="small muted">还没有讲解故事。点“编辑”或“AI 起草”补上。</p>') +
             '</section>' +
             '<section class="panel">' +
@@ -952,18 +958,127 @@
     return '<main class="page detail-page"><div class="shell">' + artifactDetailHTML(a, false) + '</div></main>';
   }
 
+  /* ---------------- story read-aloud ---------------- */
+  function ttsChunks(text) {
+    const raw = String(text || '').split(/\n+/).map((s) => s.trim()).filter(Boolean);
+    const out = [];
+    for (const para of raw) {
+      if (para.length <= 150) { out.push(para); continue; }
+      const sentences = para.split(/(?<=[。！？!?；;])/).map((s) => s.trim()).filter(Boolean);
+      let buf = '';
+      for (const s of sentences) {
+        if (buf && (buf + s).length > 150) { out.push(buf); buf = ''; }
+        buf += s;
+      }
+      if (buf) out.push(buf);
+    }
+    return out.length ? out : raw;
+  }
+  function updateTtsButton() {
+    const btn = document.getElementById('story-tts');
+    if (!btn) return;
+    const on = !!state.ui.tts.speaking;
+    btn.classList.toggle('speaking', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    const label = btn.querySelector('span');
+    if (label) label.textContent = on ? '停止' : '朗读';
+    btn.title = on ? '停止朗读' : '朗读讲解故事';
+  }
+  function stopStoryTts(message) {
+    const old = state.ui.tts;
+    old.token += 1;
+    clearTimeout(old.timer);
+    try { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); } catch (e) { /* ignore */ }
+    state.ui.tts = { artifactId: null, speaking: false, token: old.token, timer: null, started: false };
+    updateTtsButton();
+    if (message) toast(message);
+  }
+  function startStoryTts(id) {
+    const a = findArtifact(id);
+    if (!a) return;
+    const text = storyText(a);
+    if (!text) { toast('这件文物还没有讲解故事。'); return; }
+    if (!('speechSynthesis' in window) || typeof window.SpeechSynthesisUtterance !== 'function') {
+      toast('当前浏览器不支持网页朗读。可以试试点浏览器菜单里的“朗读页面”，或换 Chrome。', { duration: 6000 });
+      return;
+    }
+    const chunks = ttsChunks(text);
+    stopStoryTts();
+    const synth = window.speechSynthesis;
+    let voice = null;
+    try {
+      const voices = synth.getVoices ? synth.getVoices() : [];
+      voice = voices.find((v) => /^zh[-_]/i.test(v.lang)) || voices.find((v) => /chinese|中文|普通话/i.test(v.name)) || null;
+    } catch (e) { voice = null; }
+    const token = state.ui.tts.token + 1;
+    state.ui.tts = { artifactId: id, speaking: true, token, timer: null, started: false, index: 0 };
+    updateTtsButton();
+    const speakNext = () => {
+      const t = state.ui.tts;
+      if (!t.speaking || t.token !== token) return;
+      if (t.index >= chunks.length) { stopStoryTts(); return; }
+      const u = new window.SpeechSynthesisUtterance(chunks[t.index]);
+      u.lang = 'zh-CN';
+      u.rate = 0.95;
+      u.pitch = 1;
+      if (voice) u.voice = voice;
+      u.onstart = () => {
+        const cur = state.ui.tts;
+        if (cur.token !== token) return;
+        cur.started = true;
+        clearTimeout(cur.timer);
+        cur.timer = null;
+        updateTtsButton();
+      };
+      u.onend = () => {
+        const cur = state.ui.tts;
+        if (!cur.speaking || cur.token !== token) return;
+        cur.index += 1;
+        cur.started = false;
+        speakNext();
+      };
+      u.onerror = (ev) => {
+        if (ev && (ev.error === 'interrupted' || ev.error === 'canceled')) return;
+        const cur = state.ui.tts;
+        if (cur.token !== token) return;
+        stopStoryTts('朗读中断：' + ((ev && ev.error) || '浏览器没有返回原因'));
+      };
+      try {
+        synth.speak(u);
+      } catch (e) {
+        stopStoryTts('朗读启动失败：' + e.message);
+        return;
+      }
+      if (t.index === 0) {
+        const cur = state.ui.tts;
+        cur.timer = setTimeout(() => {
+          if (state.ui.tts.token !== token || state.ui.tts.started) return;
+          stopStoryTts('浏览器没有真正开始朗读。华为浏览器可能不支持网页语音，可以试试点浏览器菜单里的“朗读页面”，或换 Chrome。');
+        }, 4500);
+      }
+    };
+    speakNext();
+  }
+  function toggleStoryTts(id) {
+    if (state.ui.tts.speaking && state.ui.tts.artifactId === id) {
+      stopStoryTts('已停止朗读');
+      return;
+    }
+    startStoryTts(id);
+  }
+
   /* ---------------- card AI assistant ---------------- */
   const CARD_CHAT_SUGGESTIONS = [
     '这件文物最值得讲什么？',
-    '观众最常问什么？',
-    '给我 30 秒讲解版',
-    '哪些地方需要核对？'
+    '它和同类文物有什么不同？',
+    '观众可能追问什么？',
+    '给我 30 秒讲解版'
   ];
   function cardChatPrompt(a) {
     const museum = museumConfig(museumOfArtifact(a));
     const gallery = findGallery(a.galleryId);
     const lines = [
-      '你是讲解员的随身助手，只回答关于《' + a.name + '》这件文物的问题。',
+      '你是讲解员的随身助手，当前正在看《' + a.name + '》。回答要围绕文物、博物馆、历史与讲解，但不必局限在卡片已有内容。',
       '',
       '【当前卡片资料】',
       '名称：' + a.name,
@@ -980,13 +1095,14 @@
       '笔记：' + (a.notes || '无'),
       '',
       '【回答规则】',
-      '1. 只回答这件文物本身、它的历史背景或讲解方法；无关问题礼貌拉回。',
-      '2. 优先使用上面的卡片资料；卡片没有的信息，明确说“卡片里没有”，不要假装卡片里有。',
-      '3. 不编造年代、尺寸、重量、出土地、馆藏号；不确定就建议核对展厅说明牌或两馆官网。',
-      '4. 卡片内容可能是 AI 草稿；涉及具体史实时，必要时提醒“这条还需要核对”。',
-      '5. 回答 2–5 句，先给结论再解释；讲解口径可以直接给口语版。',
-      '6. 不写“你可以指向”“先别急着看”“注意看”这类舞台提示。',
-      '7. 不要输出 Markdown 表格或代码块，保持适合手机阅读的短段落。'
+      '1. 把这张卡片当作对话起点，不是知识边界：可以回答相关历史背景、同类文物比较、观众可能追问、术语解释、讲解方法和临场应对。',
+      '2. 保持文物、博物馆、讲解的调性；如果问题完全无关，简短说明并自然拉回。',
+      '3. 卡片资料是背景，不是事实上限。可以补充通识，但要区分“卡片里写的”和“补充的”，不要把补充内容说成卡片原有内容。',
+      '4. 不编造年代、尺寸、重量、出土地、馆藏号；具体事实不确定时，提示核对展厅说明牌或两馆官网。',
+      '5. 卡片内容可能是 AI 草稿；涉及具体史实时，必要时提醒“这条还需要核对”。',
+      '6. 回答 2–8 句，先给结论再解释；复杂问题可以分点，讲解口径可以直接给口语版。',
+      '7. 不写“你可以指向”“先别急着看”“注意看”这类舞台提示。',
+      '8. 不要输出 Markdown 表格或代码块，保持适合手机阅读的短段落。'
     ];
     return lines.join('\n');
   }
@@ -995,7 +1111,7 @@
     const open = c.open && c.artifactId === a.id;
     const hasMessages = c.messages.length > 0;
     const intro = '<div class="assistant-intro">' +
-      '<p>我只回答《' + esc(a.name) + '》的问题。可以问：</p>' +
+      '<p>我在看《' + esc(a.name) + '》。可以问这件文物，也可以问相关历史、同类比较和讲解方法。</p>' +
       '<div class="assistant-suggestions">' +
         CARD_CHAT_SUGGESTIONS.map((q) => '<button type="button" data-action="chat-suggest" data-question="' + esc(q) + '">' + esc(q) + '</button>').join('') +
       '</div>' +
@@ -1007,7 +1123,7 @@
       '<button type="button" class="assistant-fab" data-action="chat-toggle" aria-label="问这件文物" aria-expanded="' + (open ? 'true' : 'false') + '">' + icon('sparkle') + '<span>问这件</span></button>' +
       '<section class="assistant-panel" role="dialog" aria-modal="false" aria-labelledby="assistant-title">' +
         '<header class="assistant-head">' +
-          '<div><p class="kicker">本卡助手</p><h2 id="assistant-title">问《' + esc(a.name) + '》</h2><p>只基于这张卡片回答，史实请再核对。</p></div>' +
+          '<div><p class="kicker">随身助手</p><h2 id="assistant-title">问《' + esc(a.name) + '》</h2><p>以这张卡片为起点，也可以追问相关历史与讲解。</p></div>' +
           '<button type="button" class="icon-btn" data-action="chat-close" aria-label="关闭助手">' + icon('close') + '</button>' +
         '</header>' +
         '<div class="assistant-messages" id="assistant-messages">' +
@@ -1018,7 +1134,7 @@
           '<input id="assistant-input" type="text" placeholder="问这件文物的任何问题……" autocomplete="off" maxlength="500" aria-label="输入问题">' +
           '<button type="submit" class="btn btn-primary btn-sm" ' + (c.loading ? 'disabled' : '') + '>发送</button>' +
         '</form>' +
-        '<p class="assistant-foot">回答基于本卡资料；不确定的地方会提示你核对。</p>' +
+        '<p class="assistant-foot">回答以本卡为起点，补充的通识请再核对。</p>' +
       '</section>' +
     '</div>';
   }
@@ -1071,7 +1187,7 @@
     }
     const history = c.messages.slice(-8).map((m) => ({ role: m.role, content: m.content }));
     try {
-      const answer = await chatCompletion([{ role: 'system', content: cardChatPrompt(a) }, ...history], 700, { json: false, temperature: 0.5 });
+      const answer = await chatCompletion([{ role: 'system', content: cardChatPrompt(a) }, ...history], 1000, { json: false, temperature: 0.55 });
       const clean = String(answer || '').trim();
       if (!clean) throw new Error('AI 没有返回内容。');
       c.messages.push({ role: 'assistant', content: clean });
@@ -1227,7 +1343,7 @@
           '<div class="about-block"><strong>它是什么：</strong>一个单机优先的讲解员工作台。目录按“单元 → 文物 → 简介 / 讲解故事”组织，内容可随时增删改；AI 只负责按统一格式起草，最终解释权在你。</div>' +
           '<div class="about-block"><strong>示例内容：</strong>13 件文物为讲解练习草稿，依据国博官网公开资料整理，但年代、尺寸、出土地和叙事解释仍应以展厅说明牌与最新研究为准。</div>' +
           '<div class="about-block"><strong>图片版权：</strong>示例图片来自中国国家博物馆、首都博物馆官网，版权归原权利人所有，仅用于个人学习与讲解准备，请勿商用或公开再分发。</div>' +
-          '<div class="about-block"><strong>技术：</strong>原生 HTML / CSS / JavaScript，无框架、无账号、无云端。数据保存在 IndexedDB，支持导出 JSON。版本 1.2.0 · 正式版。</div>' +
+          '<div class="about-block"><strong>技术：</strong>原生 HTML / CSS / JavaScript，无框架、无账号、无云端。数据保存在 IndexedDB，支持导出 JSON。版本 1.3.0 · 正式版。</div>' +
         '</section>' +
       '</div>' +
     '</main>';
@@ -1235,6 +1351,7 @@
 
   /* ---------------- modal shell ---------------- */
   function openModal(type, payload) {
+    stopStoryTts();
     state.ui.modal = type;
     if (type === 'editor') state.ui.editor = payload;
     if (type === 'galleries') state.ui.manager = payload || { editing: null, form: null };
@@ -2077,6 +2194,7 @@
   function openReader(id) {
     const a = findArtifact(id);
     if (!a) return;
+    stopStoryTts();
     closeModal();
     const beats = storyBeats(a);
     state.ui.reader = {
@@ -2338,6 +2456,11 @@
       if (action === 'chat-suggest') {
         e.preventDefault();
         sendCardChat(el.getAttribute('data-question'));
+        return;
+      }
+      if (action === 'toggle-tts') {
+        e.preventDefault();
+        toggleStoryTts(el.getAttribute('data-id'));
         return;
       }
       if (action === 'toggle-sort') {

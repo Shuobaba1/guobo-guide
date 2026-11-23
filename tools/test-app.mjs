@@ -73,6 +73,7 @@ await waitFor('location.hash.includes("/a/")');
 check('进入文物详情', (await evaluate('document.querySelector(".split-detail .artifact-title h1").innerText')).includes('鹳鱼石斧'));
 check('详情深链接', (await evaluate('location.hash')).includes('#/g/g-yuan-gu/a/'));
 check('打开详情不自动聚焦', await evaluate('!["INPUT","TEXTAREA"].includes(document.activeElement.tagName)'));
+check('讲解故事有朗读按钮', await evaluate('!!document.querySelector("#story-tts") && document.querySelector("#story-tts span").innerText === "朗读"'));
 
 check('详情有卡片助手', await evaluate('!!document.querySelector("#card-assistant .assistant-fab")'));
 await evaluate('document.querySelector(".assistant-fab").click()');

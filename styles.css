@@ -961,6 +961,9 @@ code, .mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monosp
 .script-block p:empty::after { content: "（待补充）"; color: var(--faint); }
 .script-block .stage { color: var(--muted); font-size: 0.75rem; }
 .copy-script { margin-top: 4px; }
+.panel-tools { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 7px; }
+.story-tts svg { width: 15px; height: 15px; }
+.story-tts.speaking { border-color: var(--cinnabar); color: var(--cinnabar-deep); background: var(--cinnabar-soft); }
 .facts-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .facts-list li { position: relative; padding-left: 19px; color: var(--ink-2); font-size: 0.8125rem; line-height: 1.7; }
 .facts-list li::before {

@@ -45,7 +45,7 @@ check('无横向溢出', await ev('document.documentElement.scrollWidth <= inner
 check('底部导航显示', await ev('getComputedStyle(document.querySelector(".bottom-nav")).display !== "none"'));
 check('搜索框 16px 防缩放', (await ev('getComputedStyle(document.querySelector(".search-box input")).fontSize')) === '16px');
 check('Service Worker 已注册', await ev('navigator.serviceWorker.ready.then((r) => !!r.active)'));
-check('离线缓存版本 v27', await ev('caches.keys().then((keys) => keys.includes("guobo-guide-v27"))'));
+check('离线缓存版本 v28', await ev('caches.keys().then((keys) => keys.includes("guobo-guide-v28"))'));
 
 await ev('document.querySelector(".era-row").click()');
 await waitFor('!!document.querySelector(".artifact-row")');
@@ -79,6 +79,7 @@ await ev('document.querySelector(".artifact-row").click()');
 await waitFor('location.hash.startsWith("#/a/")');
 check('手机点文物进单页详情', (await ev('document.querySelector(".artifact-title h1").innerText')).includes('鹳鱼石斧'));
 check('详情无分栏', await ev('!document.querySelector(".split-layout")'));
+check('手机讲解故事有朗读按钮', await ev('!!document.querySelector("#story-tts")'));
 check('手机详情有卡片助手', await ev('!!document.querySelector("#card-assistant .assistant-fab")'));
 await ev('document.querySelector(".assistant-fab").click()');
 await waitFor('!!document.querySelector(".assistant-panel")');
